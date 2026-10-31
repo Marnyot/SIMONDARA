@@ -9,9 +9,11 @@ Prefix: `simondara/<deviceId>/` (default `deviceId` = `kos-01`). Semua payload J
 | Topik | Arah | QoS | Retained | Payload |
 | --- | --- | --- | --- | --- |
 | `telemetry` | ESP → | 0 | tidak | `{"t":28.5,"h":55.0,"ppm":820,"ts":1730000000}` tiap 10 dtk |
-| `state` | ESP → | 1 | ya | `{"status":0,"fan":0,"mode":0,"led":1,"buzzer":0,"mute":0}` saat berubah + saat connect |
+| `state` | ESP → | 0* | ya | `{"status":0,"fan":0,"mode":0,"led":1,"buzzer":0,"mute":0}` saat berubah + saat connect |
 | `cmd` | → ESP | 1 | tidak | salah satu/lebih field: `{"mode":1}`, `{"fan":1}`, `{"led":2}`, `{"buzzer":1}`, `{"mute":1}` |
 | `online` | ESP → | 1 | ya | `"1"` saat connect; LWT `"0"` |
+
+\* PubSubClient hanya bisa publish QoS 0; state tetap retained dan dikirim ulang setiap connect. LWT dan subscribe `cmd` memakai QoS 1.
 
 Nilai:
 - `t` °C (float), `h` % RH (float), `ppm` integer setara CO₂, `ts` unix detik (opsional; backend pakai waktu terima jika tidak ada/0).
