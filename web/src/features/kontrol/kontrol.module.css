@@ -1,0 +1,257 @@
+.card {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+.title {
+  margin: 0;
+  color: var(--color-heading);
+  font-size: 1.0625rem;
+  font-weight: var(--font-weight-bold);
+}
+
+.status {
+  margin: 2px 0 0;
+  color: var(--color-muted);
+  font-size: 0.8125rem;
+}
+
+.description,
+.hint {
+  margin: 0;
+  color: var(--color-muted);
+  font-size: 0.8125rem;
+  line-height: 1.6;
+}
+
+.description {
+  max-width: 62ch;
+}
+
+.hint {
+  margin-top: calc(var(--space-2) * -1);
+}
+
+.heading + .hint {
+  margin-top: calc(var(--space-1) * -1);
+}
+
+.safe {
+  color: var(--color-safe-text);
+}
+
+.warning {
+  color: var(--color-warning-text);
+}
+
+.danger {
+  color: var(--color-danger-text);
+}
+
+/* Disabled cards keep showing the actual value; only the control dims. */
+.card[data-disabled] .title {
+  color: var(--color-text);
+}
+
+.pending {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--color-primary);
+  font-weight: var(--font-weight-medium);
+}
+
+.spinner {
+  width: 12px;
+  height: 12px;
+  border: 2px solid var(--color-primary-soft);
+  border-top-color: var(--color-primary);
+  border-radius: 50%;
+  animation: spin 800ms linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(1turn);
+  }
+}
+
+/* LED lamp mirrors the physical indicator colour. */
+.lamp {
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 2px solid var(--color-border-strong);
+  background: var(--color-background);
+  transition:
+    background-color 200ms ease-out,
+    box-shadow 200ms ease-out;
+}
+
+.lamp[data-led='1'],
+.lamp[data-led='2'],
+.lamp[data-led='3'] {
+  border-color: transparent;
+  box-shadow: 0 2px 10px var(--lamp-glow);
+}
+
+.lamp[data-led='1'] {
+  --lamp-glow: #2ea05f66;
+  background: var(--color-safe);
+}
+
+.lamp[data-led='2'] {
+  --lamp-glow: #e8b10a73;
+  background: var(--color-warning);
+}
+
+.lamp[data-led='3'] {
+  --lamp-glow: #d9473f66;
+  background: var(--color-danger);
+}
+
+/* Mute: quiet by default, urgent while status is Bahaya. */
+.mute {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.muteBody {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.muteIcon {
+  display: inline-grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-control);
+  color: var(--color-primary);
+  background: var(--color-primary-soft);
+}
+
+.muteButton {
+  width: 100%;
+}
+
+.mute[data-danger] {
+  border-color: var(--color-danger);
+  background: var(--color-danger-soft);
+}
+
+.mute[data-danger] .muteIcon {
+  color: white;
+  background: var(--color-danger);
+}
+
+.mute[data-danger] .title,
+.mute[data-danger] .status {
+  color: var(--color-danger-text);
+}
+
+.mute[data-danger] .muteButton[data-variant='primary'] {
+  background: var(--color-danger);
+}
+
+.mute[data-danger] .muteButton[data-variant='primary']:hover {
+  background: var(--color-danger-text);
+}
+
+.mute[data-danger] .muteButton[data-variant='secondary'] {
+  color: var(--color-danger-text);
+  background: var(--color-surface);
+}
+
+/* LCD 16x2: dark glass with faint character cells, like the HD44780 panel. */
+.lcd {
+  container-type: inline-size;
+  display: grid;
+  gap: 4px;
+  padding: 14px 16px;
+  border-radius: var(--radius-control);
+  background: #12352b;
+  box-shadow:
+    inset 0 2px 6px #0000004d,
+    inset 0 0 0 1px #ffffff0f;
+}
+
+.lcdRow {
+  display: grid;
+  grid-template-columns: repeat(16, minmax(0, 1fr));
+  gap: 2px;
+}
+
+.lcdCell {
+  display: grid;
+  place-items: center;
+  aspect-ratio: 5 / 8;
+  border-radius: 2px;
+  background: #ffffff0a;
+  color: #d9f2e8;
+  font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  font-size: clamp(0.75rem, 5.6cqi, 1.375rem);
+  line-height: 1;
+  white-space: pre;
+  text-shadow: 0 0 6px #d9f2e84d;
+}
+
+.rows {
+  display: grid;
+  gap: var(--space-3);
+  margin: 0;
+}
+
+.row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--space-4);
+  font-size: var(--font-size-body);
+}
+
+.row dt {
+  color: var(--color-muted);
+}
+
+.row dd {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+  color: var(--color-heading);
+  font-weight: var(--font-weight-bold);
+  text-align: right;
+}
+
+@media (min-width: 640px) {
+  .mute {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+  }
+
+  .muteButton {
+    width: auto;
+    min-width: 160px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spinner {
+    animation: none;
+    border-color: var(--color-primary);
+  }
+
+  .lamp {
+    transition: none;
+  }
+}
