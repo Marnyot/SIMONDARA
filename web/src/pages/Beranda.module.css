@@ -1,0 +1,274 @@
+/* The supplied screenshots define this surface: status first, two compact
+   sensor cards on mobile, three on desktop, then actuators and trend. */
+.layout {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+.full,
+.status,
+.bottom,
+.offline,
+.updated {
+  grid-column: 1 / -1;
+}
+.status {
+  border-radius: 20px;
+  padding: 20px;
+  background: var(--color-safe-soft);
+  color: var(--color-safe-text);
+}
+.status[data-status='1'] {
+  background: var(--color-warning-soft);
+  color: var(--color-warning-text);
+}
+.status[data-status='2'] {
+  background: var(--color-danger-soft);
+  color: var(--color-danger-text);
+}
+.status h2,
+.metric h2,
+.actuators h2,
+.trend h2 {
+  font-size: 14px;
+  font-weight: 600;
+  margin: 0;
+}
+.statusLabel {
+  font-size: 44px;
+  line-height: 1.15;
+  font-weight: 750;
+  margin: 12px 0;
+  letter-spacing: -0.025em;
+}
+.advice {
+  font-size: 14px;
+  margin: 0;
+  max-width: 65ch;
+}
+.scale {
+  margin-top: 14px;
+}
+.segments {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 4px;
+}
+.segments > span {
+  display: block;
+  height: 10px;
+  border-radius: 8px;
+  position: relative;
+  overflow: hidden;
+}
+.segments i {
+  display: block;
+  position: absolute;
+  left: calc(50% - 2px);
+  height: 100%;
+  width: 4px;
+  background: var(--color-heading);
+}
+.scaleLabels {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 5px;
+  font-size: 11px;
+  font-weight: 600;
+}
+.metric {
+  padding: 16px;
+}
+.metric h2 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--color-muted);
+}
+.metric svg {
+  color: var(--color-primary);
+  flex-shrink: 0;
+}
+.value {
+  color: var(--color-heading);
+  font-size: 31px;
+  line-height: 1.2;
+  font-weight: 700;
+  margin: 10px 0 7px;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.025em;
+}
+.value span {
+  font-size: 13px;
+  font-weight: 400;
+  letter-spacing: normal;
+  color: var(--color-muted);
+  white-space: nowrap;
+}
+.source {
+  margin: 0;
+  color: var(--color-muted);
+  font-size: 12px;
+}
+.gas {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+}
+.gas .value {
+  margin: 0;
+  font-size: 25px;
+}
+.gasMeter,
+.gas .source {
+  grid-column: 1 / -1;
+}
+.gasMeter {
+  height: 8px;
+  border-radius: 8px;
+  background: var(--color-border);
+  overflow: hidden;
+}
+.gasMeter > span {
+  display: block;
+  height: 100%;
+}
+.bottom {
+  display: grid;
+  gap: 20px;
+  min-width: 0;
+}
+.actuators {
+  padding: 16px;
+}
+.actuators h2 {
+  color: var(--color-muted);
+  margin-bottom: 12px;
+}
+.actuators dl {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin: 0;
+  gap: 10px;
+  font-size: 12px;
+}
+.actuators dt {
+  color: var(--color-muted);
+  margin-bottom: 5px;
+}
+.actuators dd {
+  color: var(--color-heading);
+  margin: 0;
+  font-weight: 600;
+}
+.leds {
+  display: flex;
+  gap: 5px;
+  margin: 0 0 6px;
+}
+.leds i {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  opacity: 0.22;
+}
+.leds i[data-active='true'] {
+  opacity: 1;
+}
+.trend h2 {
+  color: var(--color-heading);
+}
+.offline {
+  margin: 0;
+  padding: 12px 16px;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-control);
+  color: var(--color-muted);
+  font-size: 13px;
+}
+.updated {
+  text-align: center;
+  margin: 0;
+  font-size: 12px;
+  color: var(--color-muted);
+}
+@media (min-width: 1024px) {
+  .layout {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 20px;
+  }
+  .status {
+    display: grid;
+    grid-template-columns: 1.3fr 1fr;
+    align-items: center;
+    gap: 32px;
+    padding: 32px;
+    min-height: 180px;
+  }
+  .statusLabel {
+    font-size: 54px;
+    margin: 12px 0;
+  }
+  .scale {
+    margin-top: 0;
+  }
+  .segments > span {
+    height: 12px;
+  }
+  .scaleLabels {
+    font-size: 12px;
+  }
+  .metric {
+    padding: 24px;
+  }
+  .value {
+    font-size: 40px;
+    margin: 14px 0 10px;
+  }
+  .gas {
+    grid-column: auto;
+    display: block;
+  }
+  .gas .value {
+    font-size: 40px;
+    margin: 14px 0 10px;
+  }
+  .gasMeter {
+    margin-bottom: 10px;
+  }
+  .bottom {
+    grid-template-columns: 1fr 1.9fr;
+    align-items: start;
+  }
+  .actuators {
+    padding: 24px;
+  }
+  .actuators dl {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    font-size: 14px;
+  }
+  .actuators dl > div {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+  .actuators dt {
+    margin: 0;
+  }
+  .actuators dd {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .leds {
+    margin: 0;
+  }
+  .updated {
+    text-align: right;
+  }
+}
