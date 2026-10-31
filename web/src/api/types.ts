@@ -34,7 +34,13 @@ export const eventSchema = z.discriminatedUnion('type', [
     type: z.literal('status'),
     value: z.union([z.literal(0), z.literal(1), z.literal(2)]),
   }),
-  z.object({ at: iso, type: z.literal('online'), value: z.boolean() }),
+  z.object({
+    at: iso,
+    type: z.literal('online'),
+    value: z
+      .union([z.boolean(), bit])
+      .transform((value) => value === true || value === 1),
+  }),
 ]);
 export const commandSchema = deviceStateSchema
   .omit({ status: true })
