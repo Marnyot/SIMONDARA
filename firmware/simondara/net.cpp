@@ -204,8 +204,8 @@ void begin(CommandHandler onCommand, ConnectHandler onConnect) {
   snprintf(topicOnline, sizeof topicOnline, "simondara/%s/online", DEVICE_ID);
 
 #if MQTT_USE_TLS
-  trustAnchors.append(kIsrgRootX1);
-  trustAnchors.append(kIsrgRootX2);
+  trustAnchors.append(kDigiCertGlobalRootG2);
+  trustAnchors.append(kDigiCertGlobalRootCA);
   transport.setTrustAnchors(&trustAnchors);
 #endif
   mqtt.setServer(MQTT_HOST, MQTT_PORT);

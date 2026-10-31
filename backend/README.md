@@ -21,22 +21,22 @@ CLI hash meminta password minimal 8 karakter tanpa menampilkan input; bisa juga 
 
 ## Environment
 
-| Variabel                             | Keterangan                                                                         |
-| ------------------------------------ | ---------------------------------------------------------------------------------- |
-| PORT                                 | Default 8080; listen 0.0.0.0                                                       |
-| NODE_ENV                             | development / test / production                                                    |
-| TRUST_PROXY                          | true/false; default true di production, false di development/test jika tidak diisi |
-| MQTT_URL                             | mqtt://localhost:1883 lokal; mqtts://cluster:8883 produksi (wajib TLS)             |
-| MQTT_USERNAME, MQTT_PASSWORD         | Wajib; akun backend terpisah dari perangkat                                        |
-| DEVICE_ID                            | Default kos-01, huruf/angka/underscore/tanda minus                                 |
-| DB_PATH                              | Default ./data/simondara.db; produksi /data/simondara.db di volume persisten       |
-| ADMIN_PASSWORD_HASH                  | Hash scrypt dari script; wajib                                                     |
-| SESSION_SECRET                       | Minimal 32 karakter acak; wajib; rotasi membatalkan cookie lama                    |
-| WEB_ORIGIN                           | Origin web tanpa trailing slash; dev http://localhost:5173                         |
-| TELEGRAM_BOT_TOKEN                   | Kosong menonaktifkan bot                                                           |
-| TELEGRAM_CHAT_ID                     | Chat numerik pengelola; wajib ketika token terisi                                  |
-| SIM_MQTT_USERNAME, SIM_MQTT_PASSWORD | Default device/dev, terpisah dari MQTT_USERNAME/PASSWORD                           |
-| SIM_SCENARIO                         | normal / naik-ke-bahaya / offline                                                  |
+| Variabel                             | Keterangan                                                                                             |
+| ------------------------------------ | ------------------------------------------------------------------------------------------------------ |
+| PORT                                 | Default 8080; listen 0.0.0.0                                                                           |
+| NODE_ENV                             | development / test / production                                                                        |
+| TRUST_PROXY                          | true/false; default true di production, false di development/test jika tidak diisi                     |
+| MQTT_URL                             | mqtt://localhost:1883 lokal; mqtts://l4919106.ala.asia-southeast1.emqxsl.com:8883 produksi (wajib TLS) |
+| MQTT_USERNAME, MQTT_PASSWORD         | Wajib; akun backend terpisah dari perangkat                                                            |
+| DEVICE_ID                            | Default kos-01, huruf/angka/underscore/tanda minus                                                     |
+| DB_PATH                              | Default ./data/simondara.db; produksi /data/simondara.db di volume persisten                           |
+| ADMIN_PASSWORD_HASH                  | Hash scrypt dari script; wajib                                                                         |
+| SESSION_SECRET                       | Minimal 32 karakter acak; wajib; rotasi membatalkan cookie lama                                        |
+| WEB_ORIGIN                           | Origin web tanpa trailing slash; dev http://localhost:5173                                             |
+| TELEGRAM_BOT_TOKEN                   | Kosong menonaktifkan bot                                                                               |
+| TELEGRAM_CHAT_ID                     | Chat numerik pengelola; wajib ketika token terisi                                                      |
+| SIM_MQTT_USERNAME, SIM_MQTT_PASSWORD | Default device/dev, terpisah dari MQTT_USERNAME/PASSWORD                                               |
+| SIM_SCENARIO                         | normal / naik-ke-bahaya / offline                                                                      |
 
 Konfigurasi divalidasi sebelum membuka DB/koneksi. Pesan kegagalan menyebut nama field tanpa mencetak nilainya. Jangan commit `.env`. Buat SESSION_SECRET dengan `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`. CORS hanya aktif saat development dan hanya mengizinkan WEB_ORIGIN; POST dari Origin lain ditolak. Pada production WEB_ORIGIN wajib sama persis dengan origin Vercel (misalnya https://simondara.vercel.app), bukan URL Railway, karena browser mengirim Origin Vercel melalui rewrite. Web produksi menggunakan rewrite `/api` same-origin sesuai kontrak. Kredensial cookie dan token Telegram tidak dicetak pada log.
 
@@ -83,7 +83,7 @@ Status mengikuti parameter terburuk dari tabel root README: suhu >33, kelembapan
 
 ## Railway / Docker produksi
 
-Gunakan root service Railway `backend`, builder Dockerfile, satu replica, healthcheck `/api/health`. Pasang volume pada `/data` dan set `DB_PATH=/data/simondara.db`; volume harus dapat ditulis UID 1000 (user node). Image multi-stage Node 24 Debian memasang compiler hanya di build stage dan berjalan non-root. Isi seluruh env wajib lewat Railway Variables, NODE_ENV=production, MQTT_URL TLS HiveMQ, WEB_ORIGIN URL web Vercel, hash/password secret kuat, dan Telegram opsional. PORT diberikan Railway. Jangan memasukkan kredensial ke Docker build arguments.
+Gunakan root service Railway `backend`, builder Dockerfile, satu replica, healthcheck `/api/health`. Pasang volume pada `/data` dan set `DB_PATH=/data/simondara.db`; volume harus dapat ditulis UID 1000 (user node). Image multi-stage Node 24 Debian memasang compiler hanya di build stage dan berjalan non-root. Isi seluruh env wajib lewat Railway Variables, NODE_ENV=production, MQTT_URL=mqtts://l4919106.ala.asia-southeast1.emqxsl.com:8883 (EMQX Cloud Serverless; hanya TLS), MQTT_USERNAME=simondara-backend, WEB_ORIGIN URL web Vercel, hash/password secret kuat, dan Telegram opsional. PORT diberikan Railway. Tetapkan password akun backend sendiri dan gunakan akun simondara-device terpisah untuk perangkat. Serverless tidak menyediakan port MQTT non-TLS. Jangan memasukkan kredensial ke Docker build arguments.
 
 Set rewrite web `/api/:path*` ke origin backend Railway agar cookie memakai origin web; login/me dan SSE harus melewati rewrite yang sama. Pastikan proxy mendukung stream, tidak melakukan cache/buffering dan tidak memakai timeout lebih pendek dari heartbeat 25 detik. Gunakan HTTPS; cookie Secure tidak dikirim lewat HTTP. TRUST_PROXY menerima true/false; jika tidak diisi, Fastify mempercayai header proxy pada production dan tidak pada development/test. Dengan Railway + rewrite Vercel, default production membuat limiter login memakai IP klien dari X-Forwarded-For, bukan menggabungkan semua pengguna pada IP proxy. Proxy terluar harus menulis ulang header forwarding dari klien; gunakan TRUST_PROXY=false bila backend diakses langsung tanpa proxy tepercaya. WEB_ORIGIN wajib diisi origin Vercel persis tanpa trailing slash; Origin lain pada POST ditolak meskipun ada rewrite.
 

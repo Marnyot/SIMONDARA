@@ -19,7 +19,7 @@ firmware/
 │   ├── actuators.*        LED, buzzer, relay (level aman sebelum pinMode)
 │   ├── display.*          LCD I2C (deteksi alamat 0x27/0x3F)
 │   ├── net.*              Wi-Fi, NTP, MQTT (TLS/non-TLS), reconnect dengan backoff
-│   ├── ca_cert.h          ISRG Root X1 (+ X2 cadangan) untuk HiveMQ Cloud
+│   ├── ca_cert.h          DigiCert Global Root G2 + Global Root CA untuk EMQX
 │   └── log.h              logging Serial 115200
 └── test/test_air_status.cpp
 ```
@@ -70,18 +70,19 @@ cp firmware/secrets.example.h firmware/simondara/secrets.h   # lalu isi
 `MQTT_USER`, `MQTT_PASS`, `MQTT_USE_TLS`, `DEVICE_ID` (default `kos-01`, harus sama dengan backend).
 Log Serial tidak pernah mencetak kata sandi.
 
-### HiveMQ Cloud (produksi, TLS)
+### EMQX Cloud Serverless (produksi, TLS)
 
 ```c
-#define MQTT_HOST "<cluster>.s1.eu.hivemq.cloud"
+#define MQTT_HOST "l4919106.ala.asia-southeast1.emqxsl.com"
 #define MQTT_PORT 8883
-#define MQTT_USER "<kredensial perangkat dari HiveMQ Access Management>"
-#define MQTT_PASS "..."
+#define MQTT_USER "simondara-device"
+#define MQTT_PASS ""  // isi password akun perangkat sendiri
 #define MQTT_USE_TLS 1
 ```
 
-- Sertifikat broker divalidasi dengan BearSSL terhadap ISRG Root X1 (Let's Encrypt) di
-  `ca_cert.h`; ISRG Root X2 ikut dimuat sebagai cadangan rantai ECDSA. Tidak ada mode `setInsecure()`.
+- EMQX Cloud Serverless hanya menyediakan MQTT melalui TLS pada port 8883; port non-TLS tidak tersedia.
+- Sertifikat broker divalidasi dengan BearSSL terhadap DigiCert Global Root G2 dan DigiCert
+  Global Root CA di `ca_cert.h`, termasuk rantai G2 yang cross-signed. Tidak ada mode `setInsecure()`.
 - Validasi sertifikat butuh jam yang benar, jadi firmware menunggu sinkronisasi NTP
   (`pool.ntp.org`, `time.google.com`, `time.cloudflare.com`) sebelum membuka koneksi TLS.
 - Bila broker mendukung Max Fragment Length, buffer TLS diperkecil ke 1 KB untuk menghemat RAM.
@@ -91,8 +92,8 @@ Log Serial tidak pernah mencetak kata sandi.
 ```c
 #define MQTT_HOST "192.168.1.10"   // IP komputer yang menjalankan infra/docker-compose
 #define MQTT_PORT 1883
-#define MQTT_USER ""               // kosong = koneksi anonim
-#define MQTT_PASS ""
+#define MQTT_USER "device"
+#define MQTT_PASS "dev"            // khusus pengembangan lokal
 #define MQTT_USE_TLS 0
 ```
 

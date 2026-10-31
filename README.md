@@ -66,7 +66,7 @@ SIMONDARA menggabungkan tiga aspek dalam satu sistem, yaitu pemantauan berkelanj
 └─────────────────────────┼───────────────────────────────┘
                           │ MQTT over TLS (Wi-Fi)
                           ▼
-                 Broker MQTT (HiveMQ Cloud)
+                 Broker MQTT (EMQX Cloud Serverless)
                           │
                           ▼
         Backend (Node.js) ──────────> Telegram Bot API ──> Pengelola
@@ -83,9 +83,11 @@ SIMONDARA menggabungkan tiga aspek dalam satu sistem, yaitu pemantauan berkelanj
 Sistem terdiri atas empat bagian.
 
 1. **Perangkat (firmware).** NodeMCU ESP8266 membaca sensor, menentukan status kualitas udara, mengendalikan aktuator, lalu mempublikasikan telemetri setiap 10 detik dan perubahan status melalui MQTT.
-2. **Broker MQTT.** HiveMQ Cloud menjadi perantara pesan antara perangkat dan backend. Koneksi dienkripsi dengan TLS, dan setiap klien memiliki kredensial tersendiri.
+2. **Broker MQTT.** EMQX Cloud Serverless menjadi perantara pesan antara perangkat dan backend. Endpoint produksi adalah `l4919106.ala.asia-southeast1.emqxsl.com:8883`, hanya melalui TLS. Perangkat menggunakan akun `simondara-device`, sedangkan backend menggunakan akun `simondara-backend`; kata sandi masing-masing ditetapkan sendiri.
 3. **Backend.** Layanan Node.js berlangganan topik perangkat, menyimpan riwayat pengukuran, menyediakan REST API dan aliran data waktu nyata (Server-Sent Events) bagi aplikasi web, meneruskan perintah kendali ke perangkat, serta menjalankan bot Telegram.
 4. **Aplikasi web.** Antarmuka pengguna berbasis React yang hanya berkomunikasi dengan backend. Kredensial MQTT tidak pernah dikirimkan ke peramban.
+
+Paket gratis EMQX Cloud Serverless menyediakan kuota bulanan 1 juta session-minute, 1 GB lalu lintas, dan 1 juta rule action. Batas pengeluaran deployment ditetapkan sebesar US$0; deployment berhenti ketika kuota habis tanpa menimbulkan tagihan. Deployment juga dihentikan apabila tidak ada koneksi klien selama 30 hari.
 
 Spesifikasi topik MQTT, format pesan, dan REST API terdapat pada [`docs/CONTRACT.md`](docs/CONTRACT.md). Acuan desain antarmuka terdapat pada [`docs/design/`](docs/design/).
 
@@ -94,7 +96,7 @@ Spesifikasi topik MQTT, format pesan, dan REST API terdapat pada [`docs/CONTRACT
 | Komponen | Teknologi |
 | --- | --- |
 | Firmware | Arduino (C++) untuk ESP8266, PubSubClient, ArduinoJson, DHT sensor library, LiquidCrystal_I2C |
-| Broker | HiveMQ Cloud (produksi), Eclipse Mosquitto (pengembangan lokal) |
+| Broker | EMQX Cloud Serverless (produksi), Eclipse Mosquitto (pengembangan lokal) |
 | Backend | Node.js 24, TypeScript, Fastify, Zod, MQTT.js, SQLite (`better-sqlite3`) |
 | Aplikasi web | React, TypeScript, Vite, `vite-plugin-pwa`, React Router, Recharts |
 | Notifikasi | Telegram Bot API |
@@ -190,7 +192,7 @@ Petunjuk rinci untuk setiap bagian tersedia pada berkas README di masing-masing 
 ## Keamanan
 
 - Kata sandi Wi-Fi, kredensial MQTT, token bot Telegram, dan kata sandi pengelola disimpan pada berkas konfigurasi lokal (`secrets.h` dan `.env`) yang dikecualikan dari repositori. Repositori hanya memuat berkas contoh.
-- Seluruh komunikasi MQTT dienkripsi dengan TLS, dan setiap klien menggunakan kredensial terpisah.
+- Komunikasi MQTT produksi melalui EMQX Cloud Serverless wajib menggunakan TLS pada port 8883 dengan validasi sertifikat DigiCert dan kredensial terpisah untuk perangkat serta backend. Listener Mosquitto tanpa TLS hanya digunakan untuk pengembangan lokal.
 - Aplikasi web dilindungi autentikasi pengelola dengan sesi berbasis cookie `httpOnly`.
 - Bot Telegram hanya menanggapi pesan dari chat ID pengelola yang terdaftar.
 - Perintah kendali divalidasi oleh backend sebelum diteruskan ke perangkat.
@@ -205,3 +207,4 @@ Petunjuk rinci untuk setiap bagian tersedia pada berkas README di masing-masing 
 6. Surya, T. M. H., Supriadi, & Maesaroh, D. T. (2026). Penampil kualitas udara ruangan berbasis ESP8266 menggunakan sensor MQ135 dan DHT11. *Jurnal Sains Informatika Terapan*, 5(2), 551–558.
 7. OASIS. *MQTT Version 3.1.1*. https://mqtt.org
 8. Telegram. *Telegram Bot API*. https://core.telegram.org/bots/api
+9. EMQX. *EMQX Cloud Serverless Documentation*. https://docs.emqx.com/en/cloud/latest/create/serverless.html
