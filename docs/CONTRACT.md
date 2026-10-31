@@ -35,7 +35,7 @@ Base `/api`. Auth: cookie `httpOnly` `session` setelah login. Semua endpoint kec
 | GET | `/api/auth/me` | – | `{"user":"pengelola"}` / 401 |
 | GET | `/api/state` | – | `{"online":true,"state":{...},"telemetry":{...},"updatedAt":"ISO"}` |
 | GET | `/api/history` | `?from=ISO&to=ISO&bucket=1m|5m|1h` | `{"points":[{"at":"ISO","t":..,"h":..,"ppm":..}]}` (rata-rata per bucket) |
-| GET | `/api/events` | `?limit=50` | `{"events":[{"at":"ISO","type":"status|online","value":..}]}` |
+| GET | `/api/events` | `?limit=50` | `{"events":[{"at":"ISO","type":"status|online","value":0}]}` — `value` integer: status 0/1/2, online 0/1 |
 | POST | `/api/cmd` | subset `{"mode","fan","led","buzzer","mute"}` | 202; 400 field/nilai tidak valid |
 | GET | `/api/stream` | – | SSE, lihat bawah |
 
