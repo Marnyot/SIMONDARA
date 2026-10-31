@@ -1,0 +1,41 @@
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+*.swp
+
+# Secrets (Wi-Fi, Blynk token, Telegram token)
+.env
+.env.*
+!.env.example
+secrets.h
+**/secrets.h
+!**/secrets.example.h
+
+# Node / web
+node_modules/
+dist/
+build/
+.vite/
+.next/
+out/
+coverage/
+*.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-error.log*
+.vercel/
+.netlify/
+
+# Firmware (Arduino / PlatformIO)
+.pio/
+*.bin
+*.elf
+*.hex
+firmware/**/build/
+
+# Internal plan (not committed)
+docs/plan.md
