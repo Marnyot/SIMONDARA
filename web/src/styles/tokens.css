@@ -1,0 +1,111 @@
+:root {
+  --color-background: #f4f7f6;
+  --color-surface: #fff;
+  --color-primary: #0e7c66;
+  --color-primary-hover: #09634f;
+  --color-primary-soft: #dcf1e8;
+  --color-heading: #12352b;
+  --color-text: #25483e;
+  --color-muted: #58726a;
+  --color-border: #dfe9e5;
+  --color-border-strong: #a5b9b1;
+  --color-safe: #2ea05f;
+  --color-safe-text: #176d3c;
+  --color-safe-soft: #dcf1e8;
+  --color-warning: #e8b10a;
+  --color-warning-text: #795400;
+  --color-warning-soft: #fff1c9;
+  --color-danger: #d9473f;
+  --color-danger-text: #ae2923;
+  --color-danger-soft: #fde9e7;
+  --radius-card: 16px;
+  --radius-control: 12px;
+  --radius-pill: 999px;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --font-family:
+    'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-size-small: 0.75rem;
+  --font-size-body: 0.875rem;
+  --font-size-title: 1.75rem;
+  --font-size-metric: 2.5rem;
+  --font-weight-body: 400;
+  --font-weight-medium: 500;
+  --font-weight-bold: 700;
+  --shadow-control: 0 2px 5px #12352b24;
+  --shadow-raised: 0 8px 24px #12352b0a;
+  --sidebar-width: 260px;
+  font-family: var(--font-family);
+  font-size: 16px;
+  line-height: 1.5;
+  color: var(--color-text);
+  background: var(--color-background);
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+  min-width: 320px;
+}
+button,
+input {
+  font: inherit;
+}
+button,
+a,
+input {
+  -webkit-tap-highlight-color: transparent;
+}
+a {
+  color: inherit;
+}
+button:focus-visible,
+a:focus-visible,
+input:focus-visible {
+  outline: 3px solid var(--color-primary);
+  outline-offset: 4px;
+}
+button:focus-visible {
+  position: relative;
+  z-index: 1;
+}
+h1,
+h2,
+h3,
+p {
+  overflow-wrap: anywhere;
+}
+h1,
+h2,
+h3 {
+  line-height: 1.25;
+  text-wrap: balance;
+}
+button {
+  touch-action: manipulation;
+}
+::selection {
+  background: var(--color-primary-soft);
+  color: var(--color-heading);
+}
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
