@@ -1,0 +1,10 @@
+# LOCAL DEVELOPMENT ONLY: the device account belongs to kos-01.
+user device
+topic write simondara/kos-01/telemetry
+topic write simondara/kos-01/state
+topic write simondara/kos-01/online
+topic read simondara/kos-01/cmd
+
+user backend
+topic read simondara/#
+topic write simondara/+/cmd

@@ -1,0 +1,18 @@
+services:
+  mosquitto:
+    image: eclipse-mosquitto:2
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:1883:1883"
+    volumes:
+      - ./mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+      - ./passwords.dev:/mosquitto/config/passwords.dev:ro
+      - ./acl:/mosquitto/config/acl:ro
+      - mosquitto-data:/mosquitto/data
+    healthcheck:
+      test: ["CMD", "mosquitto_sub", "-h", "localhost", "-u", "backend", "-P", "dev", "-t", "simondara/kos-01/state", "-E", "-W", "3"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+volumes:
+  mosquitto-data:
