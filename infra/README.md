@@ -9,4 +9,4 @@ Validasi: `docker compose -f infra/docker-compose.yml config`.
 Log: `docker compose -f infra/docker-compose.yml logs -f`.
 Hentikan: `docker compose -f infra/docker-compose.yml down` (tambah `-v` hanya untuk menghapus data broker).
 
-Ubah password lokal menggunakan `mosquitto_passwd` di image broker, lalu restart service. Untuk produksi gunakan HiveMQ Cloud TLS, ACL per perangkat, dan kredensial terpisah yang kuat.
+Ubah password lokal menggunakan `mosquitto_passwd` di image broker, lalu restart service. Untuk produksi gunakan EMQX Cloud Serverless pada `mqtts://l4919106.ala.asia-southeast1.emqxsl.com:8883`; Serverless hanya menyediakan TLS, tanpa port MQTT non-TLS. Terapkan ACL per perangkat dan akun terpisah `simondara-device` (perangkat) serta `simondara-backend` (backend), dengan password kuat yang ditetapkan sendiri.

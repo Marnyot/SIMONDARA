@@ -52,8 +52,8 @@ Saat connect, backend langsung kirim snapshot `state`, `online`, dan `telemetry`
 
 ```
 PORT=8080
-MQTT_URL=mqtts://<cluster>.hivemq.cloud:8883   # dev: mqtt://localhost:1883
-MQTT_USERNAME=
+MQTT_URL=mqtts://l4919106.ala.asia-southeast1.emqxsl.com:8883   # dev: mqtt://localhost:1883
+MQTT_USERNAME=simondara-backend
 MQTT_PASSWORD=
 DEVICE_ID=kos-01
 DB_PATH=./data/simondara.db
