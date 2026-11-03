@@ -101,7 +101,7 @@ Spesifikasi topik MQTT, format pesan, dan REST API terdapat pada [`docs/CONTRACT
 | Aplikasi web | React, TypeScript, Vite, `vite-plugin-pwa`, React Router, Recharts |
 | Notifikasi | Telegram Bot API |
 | Pengujian dan kualitas | Vitest, ESLint, Prettier |
-| Hosting | Railway (backend), Vercel (aplikasi web) |
+| Hosting | Railway (backend), Netlify (aplikasi web) |
 
 ## Perangkat Keras
 
