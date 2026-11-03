@@ -68,4 +68,4 @@ TELEGRAM_CHAT_ID=
 
 Web memanggil `/api` relatif (same-origin) supaya cookie session tidak diblok browser sebagai third-party cookie.
 - Dev: Vite `server.proxy` `/api` → `http://localhost:8080`.
-- Prod: `web/vercel.json` rewrite `/api/:path*` → URL backend Railway.
+- Prod: `web/netlify.toml` proxy rewrite `/api/*` → `https://BACKEND_URL_RAILWAY/api/:splat` (status 200), sebelum fallback SPA; ganti placeholder dengan domain backend Railway. `WEB_ORIGIN` backend harus sama persis dengan origin Netlify.
