@@ -38,7 +38,7 @@ CLI hash meminta password minimal 8 karakter tanpa menampilkan input; bisa juga 
 | SIM_MQTT_USERNAME, SIM_MQTT_PASSWORD | Default device/dev, terpisah dari MQTT_USERNAME/PASSWORD                                               |
 | SIM_SCENARIO                         | normal / naik-ke-bahaya / offline                                                                      |
 
-Konfigurasi divalidasi sebelum membuka DB/koneksi. Pesan kegagalan menyebut nama field tanpa mencetak nilainya. Jangan commit `.env`. Buat SESSION_SECRET dengan `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`. CORS hanya aktif saat development dan hanya mengizinkan WEB_ORIGIN; POST dari Origin lain ditolak. Pada production WEB_ORIGIN wajib sama persis dengan origin Vercel (misalnya https://simondara.vercel.app), bukan URL Railway, karena browser mengirim Origin Vercel melalui rewrite. Web produksi menggunakan rewrite `/api` same-origin sesuai kontrak. Kredensial cookie dan token Telegram tidak dicetak pada log.
+Konfigurasi divalidasi sebelum membuka DB/koneksi. Pesan kegagalan menyebut nama field tanpa mencetak nilainya. Jangan commit `.env`. Buat SESSION_SECRET dengan `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`. CORS hanya aktif saat development dan hanya mengizinkan WEB_ORIGIN; POST dari Origin lain ditolak. Pada production WEB_ORIGIN wajib sama persis dengan origin Netlify (misalnya https://simondara.netlify.app), bukan URL Railway, karena browser mengirim Origin Netlify melalui rewrite. Web produksi menggunakan rewrite `/api` same-origin sesuai kontrak. Kredensial cookie dan token Telegram tidak dicetak pada log.
 
 ## Script
 
@@ -83,8 +83,31 @@ Status mengikuti parameter terburuk dari tabel root README: suhu >33, kelembapan
 
 ## Railway / Docker produksi
 
-Gunakan root service Railway `backend`, builder Dockerfile, satu replica, healthcheck `/api/health`. Pasang volume pada `/data` dan set `DB_PATH=/data/simondara.db`; volume harus dapat ditulis UID 1000 (user node). Image multi-stage Node 24 Debian memasang compiler hanya di build stage dan berjalan non-root. Isi seluruh env wajib lewat Railway Variables, NODE_ENV=production, MQTT_URL=mqtts://l4919106.ala.asia-southeast1.emqxsl.com:8883 (EMQX Cloud Serverless; hanya TLS), MQTT_USERNAME=simondara-backend, WEB_ORIGIN URL web Vercel, hash/password secret kuat, dan Telegram opsional. PORT diberikan Railway. Tetapkan password akun backend sendiri dan gunakan akun simondara-device terpisah untuk perangkat. Serverless tidak menyediakan port MQTT non-TLS. Jangan memasukkan kredensial ke Docker build arguments.
+1. Pilih **New Project → Deploy from GitHub repo**, lalu pilih repositori SIMONDARA.
+2. Pada pengaturan service, tetapkan **Root Directory** ke `backend`. Railway mendeteksi `Dockerfile` secara otomatis; pastikan build menggunakan Dockerfile tersebut. Pada **Settings**, isi healthcheck path `/api/health`, pilih restart policy **On Failure**, dan gunakan satu replica. Pengaturan dilakukan melalui dashboard karena [Config as Code tidak lagi tersedia untuk service baru](https://docs.railway.com/config-as-code).
+3. Attach **Railway Volume** ke service dengan mount path `/data`. Dockerfile tidak memakai instruksi `VOLUME` karena tidak didukung Railway. Image tetap membuat `/data` dan menetapkan `DB_PATH=/data/simondara.db`; tanpa volume, data hanya bertahan selama container lokal tersebut ada.
+4. Isi **Variables** berikut sebelum deploy:
 
-Set rewrite web `/api/:path*` ke origin backend Railway agar cookie memakai origin web; login/me dan SSE harus melewati rewrite yang sama. Pastikan proxy mendukung stream, tidak melakukan cache/buffering dan tidak memakai timeout lebih pendek dari heartbeat 25 detik. Gunakan HTTPS; cookie Secure tidak dikirim lewat HTTP. TRUST_PROXY menerima true/false; jika tidak diisi, Fastify mempercayai header proxy pada production dan tidak pada development/test. Dengan Railway + rewrite Vercel, default production membuat limiter login memakai IP klien dari X-Forwarded-For, bukan menggabungkan semua pengguna pada IP proxy. Proxy terluar harus menulis ulang header forwarding dari klien; gunakan TRUST_PROXY=false bila backend diakses langsung tanpa proxy tepercaya. WEB_ORIGIN wajib diisi origin Vercel persis tanpa trailing slash; Origin lain pada POST ditolak meskipun ada rewrite.
+   | Variabel | Nilai |
+   | --- | --- |
+   | `NODE_ENV` | `production` |
+   | `RAILWAY_RUN_UID` | `0` |
+   | `MQTT_URL` | `mqtts://l4919106.ala.asia-southeast1.emqxsl.com:8883` |
+   | `MQTT_USERNAME` | `simondara-backend` |
+   | `MQTT_PASSWORD` | Password akun backend di EMQX |
+   | `DEVICE_ID` | `kos-01` |
+   | `ADMIN_PASSWORD_HASH` | Hasil `npm run hash-password` dari direktori `backend/` |
+   | `SESSION_SECRET` | String acak minimal 32 karakter, buat dengan perintah di bagian Environment |
+   | `WEB_ORIGIN` | Origin Netlify persis, misalnya `https://simondara.netlify.app`, tanpa trailing slash |
+   | `TELEGRAM_BOT_TOKEN` | Token bot; boleh kosong untuk menonaktifkan Telegram |
+   | `TELEGRAM_CHAT_ID` | Chat ID numerik pengelola; wajib jika token bot terisi |
+   | `TRUST_PROXY` | `true` (default di production) |
+
+   Railway Volume di-mount sebagai root; `RAILWAY_RUN_UID=0` membuat proses dapat menulis SQLite di volume, sesuai [panduan volume Railway](https://docs.railway.com/volumes/reference#caveats). Image lokal secara default tetap memakai user `node`; compiler hanya tersedia di build stage. Tetapkan password backend sendiri dan gunakan akun `simondara-device` terpisah untuk perangkat. Jangan memasukkan kredensial ke Docker build arguments.
+
+5. Deploy service, lalu pilih **Networking → Generate Domain** dengan target port **8080**. `PORT` disediakan Railway; server membaca `PORT` melalui `src/config.ts` dan listen pada `0.0.0.0` di `src/server.ts`. Jika nilai `PORT` berbeda, sesuaikan target port domain dengannya.
+6. Periksa `https://<domain>/api/health`, misalnya dengan `curl --fail https://<domain>/api/health`. Respons yang diharapkan adalah HTTP 200 dengan `{"ok":true}`. Endpoint ini memeriksa liveness server; status tersebut tidak menjamin broker MQTT tersambung.
+
+Set proxy rewrite web `/api/*` melalui `web/netlify.toml` ke origin backend Railway agar cookie memakai origin web; login/me dan SSE harus melewati rewrite yang sama. Proxy Netlify membatasi durasi request hingga 26 detik; SSE dapat reconnect berkala melalui LiveProvider dan menerima snapshot terbaru saat tersambung kembali (lihat panduan deploy di `../web/README.md`). Gunakan HTTPS; cookie Secure tidak dikirim lewat HTTP. TRUST_PROXY menerima true/false; jika tidak diisi, Fastify mempercayai header proxy pada production dan tidak pada development/test. Dengan Railway + rewrite Netlify, default production membuat limiter login memakai IP klien dari X-Forwarded-For, bukan menggabungkan semua pengguna pada IP proxy. Proxy terluar harus menulis ulang header forwarding dari klien; gunakan TRUST_PROXY=false bila backend diakses langsung tanpa proxy tepercaya. WEB_ORIGIN wajib diisi origin Netlify persis tanpa trailing slash; Origin lain pada POST ditolak meskipun ada rewrite.
 
 Verifikasi lokal: `npm run lint && npm run typecheck && npm run build && npm test`. Uji nyata: jalankan broker, backend dan simulator; `curl http://localhost:8080/api/health`, POST login dengan JSON password lokal melalui stdin/file berizin terbatas dan cookie jar, kemudian GET `/api/state` dengan cookie jar. Hapus cookie jar setelah selesai. Docker daemon diperlukan untuk uji broker lokal.
