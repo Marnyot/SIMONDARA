@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
-import { eventSchema } from './types';
+import { commandSchema, deviceStateSchema, eventSchema } from './types';
 
 describe('event API', () => {
   it('memvalidasi payload backend nyata dan menormalisasi online menjadi boolean', () => {
@@ -40,4 +40,18 @@ describe('event API', () => {
       ).toBe(false);
     },
   );
+});
+
+describe('fault perangkat', () => {
+  const state = { status: 0, fan: 0, mode: 0, led: 1, buzzer: 0, mute: 0 };
+  it('opsional dengan default 0 untuk firmware lama', () => {
+    expect(deviceStateSchema.parse(state).fault).toBe(0);
+    expect(deviceStateSchema.parse({ ...state, fault: 5 }).fault).toBe(5);
+    expect(deviceStateSchema.safeParse({ ...state, fault: -1 }).success).toBe(
+      false,
+    );
+  });
+  it('bukan field perintah', () => {
+    expect(commandSchema.safeParse({ fault: 1 }).success).toBe(false);
+  });
 });

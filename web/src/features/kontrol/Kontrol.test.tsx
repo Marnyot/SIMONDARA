@@ -2,8 +2,8 @@ import { act, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { DeviceState } from '../../api/types';
 import { ApiError } from '../../api/client';
-import { LiveContext } from '../../live/context';
-import type { LiveContextValue } from '../../live/context';
+import { RoomContext } from '../../live/context';
+import type { RoomContextValue } from '../../live/context';
 import Kontrol from '../../pages/Kontrol';
 import { CONFIRM_TIMEOUT_MS } from './useDeviceCommands';
 
@@ -14,38 +14,37 @@ const baseState: DeviceState = {
   led: 1,
   buzzer: 0,
   mute: 0,
+  fault: 0,
 };
 
-function live(overrides: Partial<LiveContextValue> = {}): LiveContextValue {
+function live(overrides: Partial<RoomContextValue> = {}): RoomContextValue {
   return {
+    deviceId: 'kos-01',
+    name: 'Kamar 1',
+    createdAt: '2026-10-31T00:00:00.000Z',
     state: baseState,
     telemetry: { t: 29.4, h: 62, ppm: 820 },
     online: true,
     updatedAt: new Date().toISOString(),
     connection: 'connected',
-    ready: true,
-    receivedState: true,
-    receivedOnline: true,
-    error: null,
-    retry: vi.fn(),
     sendCommand: vi.fn(() => Promise.resolve()),
     ...overrides,
   };
 }
 
-function renderPage(value: LiveContextValue) {
+function renderPage(value: RoomContextValue) {
   const view = render(
-    <LiveContext.Provider value={value}>
+    <RoomContext.Provider value={value}>
       <Kontrol />
-    </LiveContext.Provider>,
+    </RoomContext.Provider>,
   );
   return {
     ...view,
-    update: (next: LiveContextValue) =>
+    update: (next: RoomContextValue) =>
       view.rerender(
-        <LiveContext.Provider value={next}>
+        <RoomContext.Provider value={next}>
           <Kontrol />
-        </LiveContext.Provider>,
+        </RoomContext.Provider>,
       ),
   };
 }
@@ -128,6 +127,13 @@ describe('halaman Kontrol', () => {
     expect(screen.getByRole('alert')).toHaveTextContent(
       /tidak mengonfirmasi perintah/,
     );
+  });
+
+  it('merinci gangguan per komponen di kartu Koneksi', () => {
+    renderPage(live({ state: { ...baseState, fault: 2 } }));
+    const row = (label: string) => screen.getByText(label).parentElement;
+    expect(row('Sensor gas (MQ-135)')).toHaveTextContent('Gangguan');
+    expect(row('Layar LCD')).toHaveTextContent('Normal');
   });
 
   it('menonaktifkan semua kontrol saat perangkat offline', () => {

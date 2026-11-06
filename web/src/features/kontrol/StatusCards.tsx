@@ -1,3 +1,4 @@
+import { FAULTS } from '../../live/status';
 import type { AirStatus } from '../../live/status';
 import type { ConnectionStatus } from '../../live/reducer';
 import type { Telemetry } from '../../api/types';
@@ -11,10 +12,12 @@ export function LcdCard({
   telemetry,
   status,
   online,
+  lcdFault,
 }: {
   telemetry: Telemetry | null;
   status: AirStatus | null;
   online: boolean;
+  lcdFault: boolean;
 }) {
   const lines = formatLcdLines(telemetry, status);
   return (
@@ -36,9 +39,11 @@ export function LcdCard({
         ))}
       </div>
       <p className={styles.hint}>
-        {online
-          ? `Pratinjau layar ${LCD_COLUMNS}×2 pada perangkat, dari data terakhir.`
-          : 'Perangkat terputus. Pratinjau menampilkan data terakhir yang diterima.'}
+        {lcdFault
+          ? 'Layar LCD pada perangkat mengalami gangguan; tampilan fisiknya bisa berbeda dari pratinjau ini.'
+          : online
+            ? `Pratinjau layar ${LCD_COLUMNS}×2 pada perangkat, dari data terakhir.`
+            : 'Perangkat terputus. Pratinjau menampilkan data terakhir yang diterima.'}
       </p>
     </Card>
   );
@@ -58,7 +63,7 @@ function Row({
 }: {
   label: string;
   value: string;
-  tone?: 'safe' | 'warning' | 'muted';
+  tone?: 'safe' | 'warning' | 'danger';
   title?: string;
 }) {
   return (
@@ -72,7 +77,7 @@ function Row({
                 ? 'var(--color-safe)'
                 : tone === 'warning'
                   ? 'var(--color-warning)'
-                  : 'var(--color-border-strong)'
+                  : 'var(--color-danger)'
             }
           />
         ) : null}
@@ -86,10 +91,13 @@ export function ConnectionCard({
   online,
   connection,
   updatedAt,
+  fault,
 }: {
   online: boolean;
   connection: ConnectionStatus;
   updatedAt: string | null;
+  /** Null until the device has reported a state. */
+  fault: number | null;
 }) {
   const now = useNow();
   return (
@@ -99,7 +107,7 @@ export function ConnectionCard({
         <Row
           label="Perangkat"
           value={online ? 'Terhubung' : 'Terputus'}
-          tone={online ? 'safe' : 'muted'}
+          tone={online ? 'safe' : 'danger'}
         />
         <Row
           label="Server"
@@ -112,6 +120,16 @@ export function ConnectionCard({
           title={updatedAt ? formatAbsoluteTime(updatedAt) : undefined}
         />
         <Row label="Model" value="NodeMCU ESP8266" />
+        {fault === null
+          ? null
+          : FAULTS.map(({ bit, label }) => (
+              <Row
+                key={bit}
+                label={label}
+                value={fault & bit ? 'Gangguan' : 'Normal'}
+                tone={fault & bit ? 'warning' : 'safe'}
+              />
+            ))}
       </dl>
     </Card>
   );

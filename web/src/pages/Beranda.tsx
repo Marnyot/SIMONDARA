@@ -7,13 +7,19 @@ import {
 } from 'react';
 import { Droplet, Thermometer, Wind } from 'lucide-react';
 import { PageHeader } from '../components/PageHeader';
+import { FaultBadge } from '../components/FaultBadge';
 import { MuteAlarmButton } from '../components/MuteAlarmButton';
 import { Card } from '../components/ui/Card';
 import { EmptyState } from '../components/ui/EmptyState';
 import { ErrorState } from '../components/ui/ErrorState';
 import { Skeleton } from '../components/ui/Skeleton';
-import { useLive } from '../live/context';
-import { airStatus, gasStatus, STATUS } from '../live/status';
+import { useRoom } from '../live/context';
+import {
+  airStatus,
+  gasStatus,
+  STATUS,
+  unreliableReadings,
+} from '../live/status';
 import { relativeUpdate, statusAdvice } from '../features/beranda/statusAdvice';
 import { formatDateTime, formatNumber } from '../features/riwayat/history';
 import { useHistory } from '../features/riwayat/useHistory';
@@ -29,6 +35,8 @@ const subscribeDesktop = (callback: () => void) => {
 };
 const isDesktop = () => window.matchMedia(desktopQuery).matches;
 
+const UNRELIABLE_NOTE = 'Sensor gangguan, nilai tidak andal';
+
 function UpdatedAt({ at }: { at: string }) {
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
@@ -43,7 +51,8 @@ function UpdatedAt({ at }: { at: string }) {
 }
 
 function GasTrend() {
-  const { points, error, loading, retry } = useHistory('24h');
+  const { deviceId } = useRoom();
+  const { points, error, loading, retry } = useHistory(deviceId, '24h');
   return (
     <Card className={styles.trend}>
       <h2>Tren Kadar Gas (24 jam)</h2>
@@ -67,27 +76,23 @@ function GasTrend() {
 }
 
 export default function Beranda() {
-  const { telemetry, state, online, updatedAt, ready, error, retry } =
-    useLive();
+  const { name, telemetry, state, online, updatedAt } = useRoom();
   const desktop = useSyncExternalStore(
     subscribeDesktop,
     isDesktop,
     () => false,
   );
   const status = telemetry ? airStatus(telemetry) : null;
+  const unreliable = unreliableReadings(state);
   return (
     <>
       <PageHeader
-        title="Beranda"
+        title={name}
         subtitle="Pantauan kualitas udara ruangan secara langsung"
+        online={online}
       />
       <div className={styles.layout}>
-        {error ? (
-          <Card className={styles.full}>
-            <ErrorState message={error} onRetry={retry} />
-          </Card>
-        ) : null}
-        {ready && !online ? (
+        {!online ? (
           <p className={styles.offline} role="status">
             Perangkat terputus.{' '}
             {telemetry || state
@@ -95,11 +100,12 @@ export default function Beranda() {
               : 'Menunggu perangkat terhubung untuk menerima data.'}
           </p>
         ) : null}
-        {!ready && !error ? (
-          <Card className={styles.full}>
-            <Skeleton height={180} label="Memuat kualitas udara" />
-          </Card>
-        ) : telemetry && status !== null ? (
+        {state?.fault ? (
+          <div className={styles.full}>
+            <FaultBadge fault={state.fault} />
+          </div>
+        ) : null}
+        {telemetry && status !== null ? (
           <>
             <section
               className={styles.status}
@@ -133,7 +139,7 @@ export default function Beranda() {
                 </div>
               </div>
             </section>
-            <Card className={styles.metric}>
+            <Card className={styles.metric} data-unreliable={unreliable.t}>
               <h2>
                 <Thermometer size={19} aria-hidden="true" />
                 Suhu
@@ -141,9 +147,11 @@ export default function Beranda() {
               <p className={styles.value}>
                 {formatNumber(telemetry.t)} <span>°C</span>
               </p>
-              <p className={styles.source}>Sensor DHT11</p>
+              <p className={styles.source}>
+                {unreliable.t ? UNRELIABLE_NOTE : 'Sensor DHT11'}
+              </p>
             </Card>
-            <Card className={styles.metric}>
+            <Card className={styles.metric} data-unreliable={unreliable.h}>
               <h2>
                 <Droplet size={19} aria-hidden="true" />
                 Kelembapan
@@ -151,9 +159,14 @@ export default function Beranda() {
               <p className={styles.value}>
                 {formatNumber(telemetry.h)} <span>%</span>
               </p>
-              <p className={styles.source}>Sensor DHT11</p>
+              <p className={styles.source}>
+                {unreliable.t ? UNRELIABLE_NOTE : 'Sensor DHT11'}
+              </p>
             </Card>
-            <Card className={`${styles.metric} ${styles.gas}`}>
+            <Card
+              className={`${styles.metric} ${styles.gas}`}
+              data-unreliable={unreliable.ppm}
+            >
               <h2>
                 <Wind size={20} aria-hidden="true" />
                 Kadar Gas
@@ -178,23 +191,23 @@ export default function Beranda() {
                 />
               </div>
               <p className={styles.source}>
-                Ambang kuning 1.000 ppm, merah 2.000 ppm
+                {unreliable.ppm
+                  ? UNRELIABLE_NOTE
+                  : 'Ambang kuning 1.000 ppm, merah 2.000 ppm'}
               </p>
             </Card>
           </>
-        ) : ready ? (
+        ) : (
           <Card className={styles.full}>
             <EmptyState title="Belum ada pengukuran">
               Menunggu data dari sensor DHT11 dan sensor gas.
             </EmptyState>
           </Card>
-        ) : null}
+        )}
         <div className={styles.bottom}>
           <Card className={styles.actuators}>
             <h2>Status Aktuator</h2>
-            {!ready && !error ? (
-              <Skeleton height={90} label="Memuat status aktuator" />
-            ) : state ? (
+            {state ? (
               <dl>
                 <div className={styles.ledRow}>
                   <dt>LED</dt>

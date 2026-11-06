@@ -1,25 +1,82 @@
 import {
   ChartNoAxesCombined,
   House,
+  LayoutGrid,
   LogOut,
+  Settings2,
   SlidersHorizontal,
 } from 'lucide-react';
-import { NavLink, Outlet } from 'react-router-dom';
-import { useState } from 'react';
+import type { LucideIcon } from 'lucide-react';
+import {
+  NavLink,
+  Outlet,
+  useLocation,
+  useMatch,
+  useNavigationType,
+} from 'react-router-dom';
+import { useEffect, useState } from 'react';
 import { useAuth } from '../auth/context';
+import { roomUrl } from '../features/kamar/rooms';
 import { useLive } from '../live/context';
 import { Brand } from './Brand';
 import { Button } from './ui/Button';
+import { Toaster } from './Toaster';
 import { StatusDot } from './ui/StatusDot';
 import styles from './shell.module.css';
-const navigation = [
-  { to: '/', label: 'Beranda', Icon: House },
-  { to: '/kontrol', label: 'Kontrol', Icon: SlidersHorizontal },
-  { to: '/riwayat', label: 'Riwayat', Icon: ChartNoAxesCombined },
+interface NavigationItem {
+  to: string;
+  label: string;
+  Icon: LucideIcon;
+}
+const mainNavigation: NavigationItem[] = [
+  { to: '/', label: 'Daftar Kamar', Icon: LayoutGrid },
+  { to: '/kelola', label: 'Kelola', Icon: Settings2 },
 ];
+const roomNavigation = (deviceId: string): NavigationItem[] => [
+  { to: roomUrl(deviceId), label: 'Beranda', Icon: House },
+  {
+    to: roomUrl(deviceId, 'kontrol'),
+    label: 'Kontrol',
+    Icon: SlidersHorizontal,
+  },
+  {
+    to: roomUrl(deviceId, 'riwayat'),
+    label: 'Riwayat',
+    Icon: ChartNoAxesCombined,
+  },
+];
+
+function SidebarLinks({ items }: { items: NavigationItem[] }) {
+  return items.map(({ to, label, Icon }) => (
+    <NavLink
+      key={to}
+      to={to}
+      end
+      className={({ isActive }) =>
+        `${styles.navItem} ${isActive ? styles.active : ''}`
+      }
+    >
+      <Icon size={20} aria-hidden="true" />
+      {label}
+    </NavLink>
+  ));
+}
+
 export function AppShell() {
   const { logout } = useAuth();
-  const { online, connection } = useLive();
+  const { rooms, connection } = useLive();
+  const roomMatch = useMatch('/kamar/:deviceId/*');
+  const room = rooms.find(
+    ({ deviceId }) => deviceId === roomMatch?.params.deviceId,
+  );
+  const roomItems = room ? roomNavigation(room.deviceId) : null;
+  const connected = rooms.filter(({ online }) => online).length;
+  const { pathname } = useLocation();
+  const navigationType = useNavigationType();
+  // A drill-down must not open scrolled to where the list was; Back keeps the browser's position.
+  useEffect(() => {
+    if (navigationType !== 'POP') window.scrollTo(0, 0);
+  }, [pathname, navigationType]);
   const [loggingOut, setLoggingOut] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const leave = async () => {
@@ -40,30 +97,44 @@ export function AppShell() {
       <a className={styles.skip} href="#main">
         Lewati ke konten
       </a>
+      {/* Stays mounted so screen readers announce the text when it appears. */}
+      <div role="status" className={styles.connectionBanner}>
+        {connection === 'reconnecting' ? (
+          <p>Koneksi ke server terputus, menyambung ulang...</p>
+        ) : null}
+      </div>
+      <Toaster />
       <aside className={styles.sidebar}>
         <Brand />
         <nav aria-label="Navigasi utama desktop" className={styles.desktopNav}>
-          {navigation.map(({ to, label, Icon }) => (
-            <NavLink
-              key={to}
-              to={to}
-              end={to === '/'}
-              className={({ isActive }) =>
-                `${styles.navItem} ${isActive ? styles.active : ''}`
-              }
-            >
-              <Icon size={20} aria-hidden="true" />
-              {label}
-            </NavLink>
-          ))}
+          <SidebarLinks items={mainNavigation} />
         </nav>
+        {room && roomItems ? (
+          <nav
+            aria-label={`Navigasi ${room.name}`}
+            className={styles.desktopNav}
+          >
+            <p className={styles.navGroup} title={room.name}>
+              {room.name}
+            </p>
+            <SidebarLinks items={roomItems} />
+          </nav>
+        ) : null}
         <div className={styles.sidebarBottom}>
           <div className={styles.deviceCard}>
             <strong>
               <StatusDot
-                color={online ? 'var(--color-safe)' : 'var(--color-muted)'}
+                color={
+                  !rooms.length
+                    ? 'var(--color-muted)'
+                    : connected
+                      ? 'var(--color-safe)'
+                      : 'var(--color-danger)'
+                }
               />
-              Perangkat {online ? 'terhubung' : 'terputus'}
+              {rooms.length
+                ? `${connected} dari ${rooms.length} perangkat terhubung`
+                : 'Belum ada kamar'}
             </strong>
             <span>NodeMCU ESP8266</span>
           </div>
@@ -94,23 +165,17 @@ export function AppShell() {
             {error}
           </p>
         ) : null}
-        {connection !== 'connected' ? (
-          <p role="status" className={styles.banner}>
-            Koneksi server{' '}
-            {connection === 'connecting'
-              ? 'sedang disiapkan'
-              : 'terputus, menghubungkan kembali'}
-            . Data terakhir tetap ditampilkan.
-          </p>
-        ) : null}
         <Outlet />
       </main>
-      <nav aria-label="Navigasi utama mobile" className={styles.bottomNav}>
-        {navigation.map(({ to, label, Icon }) => (
+      <nav
+        aria-label={room ? `Navigasi ${room.name}` : 'Navigasi utama mobile'}
+        className={styles.bottomNav}
+      >
+        {(roomItems ?? mainNavigation).map(({ to, label, Icon }) => (
           <NavLink
             key={to}
             to={to}
-            end={to === '/'}
+            end
             className={({ isActive }) =>
               `${styles.bottomItem} ${isActive ? styles.bottomActive : ''}`
             }

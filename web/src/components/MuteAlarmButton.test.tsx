@@ -1,28 +1,28 @@
 import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
-import { LiveContext } from '../live/context';
-import type { LiveContextValue } from '../live/context';
-import { initialLiveState } from '../live/reducer';
+import { RoomContext } from '../live/context';
+import type { RoomContextValue } from '../live/context';
 import { MuteAlarmButton } from './MuteAlarmButton';
 
-function live(overrides: Partial<LiveContextValue> = {}): LiveContextValue {
+function live(overrides: Partial<RoomContextValue> = {}): RoomContextValue {
   return {
-    ...initialLiveState,
-    ready: true,
+    deviceId: 'kos-01',
+    name: 'Kamar 1',
+    createdAt: '2026-10-31T00:00:00.000Z',
+    telemetry: null,
+    updatedAt: null,
     online: true,
     connection: 'connected',
-    state: { status: 2, buzzer: 1, mute: 0, fan: 1, led: 3, mode: 0 },
-    error: null,
-    retry: vi.fn(),
+    state: { status: 2, buzzer: 1, mute: 0, fan: 1, led: 3, mode: 0, fault: 0 },
     sendCommand: vi.fn().mockResolvedValue(undefined),
     ...overrides,
   };
 }
-const view = (value: LiveContextValue) => (
-  <LiveContext.Provider value={value}>
+const view = (value: RoomContextValue) => (
+  <RoomContext.Provider value={value}>
     <MuteAlarmButton />
-  </LiveContext.Provider>
+  </RoomContext.Provider>
 );
 
 describe('bisukan alarm', () => {

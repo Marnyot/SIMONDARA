@@ -110,6 +110,13 @@
   color: var(--color-muted);
   font-size: 12px;
 }
+.metric[data-unreliable='true'] .value {
+  color: var(--color-muted);
+}
+.metric[data-unreliable='true'] .source {
+  color: var(--color-warning-text);
+  font-weight: 600;
+}
 .gas {
   grid-column: 1 / -1;
   display: grid;
@@ -183,9 +190,10 @@
 .offline {
   margin: 0;
   padding: 12px 16px;
-  border: 1px solid var(--color-border-strong);
+  border: 1px solid var(--color-danger);
   border-radius: var(--radius-control);
-  color: var(--color-muted);
+  color: var(--color-danger-text);
+  background: var(--color-danger-soft);
   font-size: 13px;
 }
 .updated {

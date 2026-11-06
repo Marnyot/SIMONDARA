@@ -25,6 +25,25 @@ export const STATUS = {
     tone: 'danger',
   },
 } as const;
+export const FAULTS = [
+  { bit: 1, label: 'Sensor suhu/kelembapan (DHT11)' },
+  { bit: 2, label: 'Sensor gas (MQ-135)' },
+  { bit: 4, label: 'Layar LCD' },
+] as const;
+
+export const faultLabels = (fault: number) =>
+  FAULTS.filter(({ bit }) => fault & bit)
+    .map(({ label }) => label)
+    .join(', ');
+
+/** Readings a faulty sensor may have produced. */
+export const unreliableReadings = (
+  state: Pick<DeviceState, 'fault'> | null,
+) => {
+  const fault = state?.fault ?? 0;
+  return { t: (fault & 1) !== 0, h: (fault & 1) !== 0, ppm: (fault & 2) !== 0 };
+};
+
 export function gasStatus(ppm: number): AirStatus {
   return ppm > THRESHOLDS.gas.danger ? 2 : ppm > THRESHOLDS.gas.warning ? 1 : 0;
 }

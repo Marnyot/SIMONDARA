@@ -10,10 +10,10 @@ const message = (cause: unknown) =>
     ? cause.message
     : 'Data gagal dimuat. Silakan coba lagi.';
 
-export function useHistory(range: HistoryRange) {
+export function useHistory(deviceId: string, range: HistoryRange) {
   const [attempt, setAttempt] = useState(0);
   const [result, setResult] = useState<Result<HistoryPoint> | null>(null);
-  const key = `${range}-${attempt}`;
+  const key = `${deviceId}-${range}-${attempt}`;
   useEffect(() => {
     const controller = new AbortController();
     const { from, to, bucket } = historyWindow(range);
@@ -21,7 +21,7 @@ export function useHistory(range: HistoryRange) {
       controller.signal,
       AbortSignal.timeout(15000),
     ]);
-    void api.history(from, to, bucket, signal).then(
+    void api.history(deviceId, from, to, bucket, signal).then(
       ({ points }) => {
         if (!controller.signal.aborted)
           setResult({ data: points, error: null, key });
@@ -32,7 +32,7 @@ export function useHistory(range: HistoryRange) {
       },
     );
     return () => controller.abort();
-  }, [range, key]);
+  }, [deviceId, range, key]);
   return {
     points: result?.key === key ? result.data : [],
     error: result?.key === key ? result.error : null,
@@ -41,17 +41,17 @@ export function useHistory(range: HistoryRange) {
   };
 }
 
-export function useEvents(range: HistoryRange) {
+export function useEvents(deviceId: string, range: HistoryRange) {
   const [attempt, setAttempt] = useState(0);
   const [result, setResult] = useState<Result<Event> | null>(null);
-  const key = `${range}-${attempt}`;
+  const key = `${deviceId}-${range}-${attempt}`;
   useEffect(() => {
     const controller = new AbortController();
     const signal = AbortSignal.any([
       controller.signal,
       AbortSignal.timeout(15000),
     ]);
-    void api.events(50, signal).then(
+    void api.events(deviceId, 50, signal).then(
       ({ events }) => {
         if (!controller.signal.aborted)
           setResult({
@@ -68,7 +68,7 @@ export function useEvents(range: HistoryRange) {
       },
     );
     return () => controller.abort();
-  }, [range, key]);
+  }, [deviceId, range, key]);
   return {
     events: result?.key === key ? result.data : [],
     error: result?.key === key ? result.error : null,

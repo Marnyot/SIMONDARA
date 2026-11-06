@@ -17,6 +17,7 @@
   background: var(--color-primary);
   color: white;
   font-weight: 600;
+  text-decoration: none;
   cursor: pointer;
 }
 .button:hover {
@@ -29,6 +30,12 @@
 .button[data-variant='ghost'] {
   background: transparent;
   color: var(--color-muted);
+}
+.button[data-variant='danger'] {
+  background: var(--color-danger-text);
+}
+.button[data-variant='danger']:hover {
+  background: color-mix(in srgb, var(--color-danger-text) 85%, black);
 }
 .button:disabled,
 .toggle:disabled,
@@ -109,6 +116,16 @@
   color: var(--color-danger-text);
   background: var(--color-danger-soft);
 }
+/* After .badge: long component lists wrap, and the edge keeps it visible on a Waspada card. */
+.faultBadge {
+  align-self: flex-start;
+  border: 1px solid var(--color-warning);
+  border-radius: var(--radius-control);
+  white-space: normal;
+}
+.faultBadge svg {
+  flex-shrink: 0;
+}
 .dot {
   display: inline-block;
   flex-shrink: 0;
@@ -132,6 +149,73 @@
 }
 .error {
   color: var(--color-danger-text);
+}
+.field {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+.field label {
+  color: var(--color-heading);
+  font-size: 13px;
+  font-weight: 600;
+}
+.field input {
+  width: 100%;
+  min-height: 48px;
+  padding: 0 14px;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-control);
+  color: var(--color-heading);
+  background: var(--color-surface);
+}
+.field input:focus-visible {
+  outline-offset: 1px;
+}
+.field input[aria-invalid='true'] {
+  border-color: var(--color-danger-text);
+}
+.fieldHint,
+.fieldError {
+  margin: 0;
+  font-size: var(--font-size-small);
+}
+.fieldHint {
+  color: var(--color-muted);
+}
+.fieldError {
+  color: var(--color-danger-text);
+  font-weight: 500;
+}
+.dialog {
+  width: min(100% - 32px, 460px);
+  padding: var(--space-6);
+  border: 0;
+  border-radius: var(--radius-card);
+  color: var(--color-text);
+  background: var(--color-surface);
+  box-shadow: 0 16px 48px #12352b33;
+}
+.dialog::backdrop {
+  background: #12352b66;
+}
+.dialog h2 {
+  margin: 0 0 var(--space-3);
+  color: var(--color-heading);
+  font-size: 18px;
+}
+.dialogBody {
+  font-size: var(--font-size-body);
+}
+.dialogBody p {
+  margin: 0 0 var(--space-3);
+}
+.dialogActions {
+  display: flex;
+  flex-wrap: wrap-reverse;
+  justify-content: flex-end;
+  gap: var(--space-3);
+  margin-top: var(--space-4);
 }
 .skeleton {
   display: block;

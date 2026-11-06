@@ -1,25 +1,28 @@
-import { useLive } from '../live/context';
 import { Badge } from './ui/Badge';
 import { StatusDot } from './ui/StatusDot';
 import styles from './shell.module.css';
 export function PageHeader({
   title,
   subtitle,
+  online,
 }: {
   title: string;
   subtitle: string;
+  /** Device link of the room this page shows; omit on pages about no single room. */
+  online?: boolean;
 }) {
-  const { online } = useLive();
   return (
     <header className={styles.pageHeader}>
       <div>
         <h1>{title}</h1>
         <p>{subtitle}</p>
       </div>
-      <Badge tone={online ? 'safe' : 'neutral'}>
-        <StatusDot />
-        {online ? 'Terhubung' : 'Terputus'}
-      </Badge>
+      {online === undefined ? null : (
+        <Badge tone={online ? 'safe' : 'danger'}>
+          <StatusDot />
+          {online ? 'Terhubung' : 'Terputus'}
+        </Badge>
+      )}
     </header>
   );
 }

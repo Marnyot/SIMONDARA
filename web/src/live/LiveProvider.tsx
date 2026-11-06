@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useReducer, useState } from 'react';
+import { useEffect, useMemo, useReducer, useState } from 'react';
 import type { ReactNode } from 'react';
-import { api, sendCommand } from '../api/client';
+import { api } from '../api/client';
 import { LiveContext } from './context';
 import { initialLiveState, liveReducer, parseLiveEvent } from './reducer';
 export function LiveProvider({ children }: { children: ReactNode }) {
@@ -12,8 +12,7 @@ export function LiveProvider({ children }: { children: ReactNode }) {
     let source: EventSource | undefined;
     let retryTimer: number | undefined;
     let failures = 0;
-    let streamHasData = false;
-    const received = new Set<string>();
+    let streamHasRooms = false;
     const controller = new AbortController();
     const initialTimeout = window.setTimeout(() => {
       if (!disposed)
@@ -22,17 +21,15 @@ export function LiveProvider({ children }: { children: ReactNode }) {
         );
     }, 12000);
     api
-      .snapshot(
-        AbortSignal.any([controller.signal, AbortSignal.timeout(12000)]),
-      )
+      .rooms(AbortSignal.any([controller.signal, AbortSignal.timeout(12000)]))
       .then((data) => {
         if (disposed) return;
-        dispatch({ type: 'snapshot', data });
+        dispatch({ type: 'rooms', data, source: 'rest' });
         setError(null);
         window.clearTimeout(initialTimeout);
       })
       .catch((cause: unknown) => {
-        if (!disposed && !streamHasData)
+        if (!disposed && !streamHasRooms)
           setError(
             cause instanceof Error
               ? cause.message
@@ -46,25 +43,33 @@ export function LiveProvider({ children }: { children: ReactNode }) {
         value: failures ? 'reconnecting' : 'connecting',
       });
       source = new EventSource('/api/stream', { withCredentials: true });
+      // The backend opens every connection with `rooms` plus a replay of the
+      // current values, so that list sets the baseline for change alerts.
+      let awaitingSnapshot = true;
       source.onopen = () => {
         failures = 0;
         dispatch({ type: 'connection', value: 'connected' });
       };
-      for (const type of ['state', 'telemetry', 'online']) {
+      for (const type of ['rooms', 'state', 'telemetry', 'online']) {
         source.addEventListener(type, (message) => {
           if (disposed) return;
           const action = parseLiveEvent(
             type,
             (message as MessageEvent<string>).data,
           );
-          if (action) {
-            streamHasData = true;
-            received.add(type);
+          if (!action) return;
+          if (action.type !== 'rooms') {
             dispatch(action);
-            setError(null);
-            if (received.has('state') && received.has('online'))
-              window.clearTimeout(initialTimeout);
+            return;
           }
+          dispatch({
+            ...action,
+            source: awaitingSnapshot ? 'snapshot' : 'stream',
+          });
+          awaitingSnapshot = false;
+          streamHasRooms = true;
+          setError(null);
+          window.clearTimeout(initialTimeout);
         });
       }
       source.onerror = () => {
@@ -86,12 +91,33 @@ export function LiveProvider({ children }: { children: ReactNode }) {
       window.clearTimeout(initialTimeout);
     };
   }, [attempt]);
-  const retry = useCallback(() => {
-    setError(null);
-    setAttempt((value) => value + 1);
-  }, []);
+  const actions = useMemo(
+    () => ({
+      retry: () => {
+        setError(null);
+        setAttempt((value) => value + 1);
+      },
+      // Responses apply immediately so the UI stays right while the stream is down.
+      createRoom: async (input: { deviceId: string; name: string }) => {
+        const room = await api.createRoom(input);
+        dispatch({ type: 'roomSaved', room });
+        return room;
+      },
+      renameRoom: async (deviceId: string, name: string) => {
+        const room = await api.renameRoom(deviceId, name);
+        dispatch({ type: 'roomSaved', room });
+        return room;
+      },
+      deleteRoom: async (deviceId: string) => {
+        await api.deleteRoom(deviceId);
+        dispatch({ type: 'roomDeleted', deviceId });
+      },
+      dismissNotice: (id: number) => dispatch({ type: 'dismissNotice', id }),
+    }),
+    [],
+  );
   return (
-    <LiveContext.Provider value={{ ...live, error, retry, sendCommand }}>
+    <LiveContext.Provider value={{ ...live, ...actions, error }}>
       {children}
     </LiveContext.Provider>
   );
