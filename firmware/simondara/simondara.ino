@@ -11,6 +11,7 @@
 #include "air_status.h"
 #include "config.h"
 #include "display.h"
+#include "fault.h"
 #include "log.h"
 #include "net.h"
 #include "sensors.h"
@@ -20,6 +21,7 @@ namespace {
 constexpr const char* kFirmwareVersion = "1.0.0";
 
 air::ControlState control;
+uint8_t activeFault = 0;
 
 struct PublishedState {
   air::Status status;
@@ -28,10 +30,11 @@ struct PublishedState {
   air::Led led;
   bool buzzer;
   bool mute;
+  uint8_t fault;
 
   bool operator==(const PublishedState& o) const {
     return status == o.status && fan == o.fan && mode == o.mode && led == o.led && buzzer == o.buzzer &&
-           mute == o.mute;
+           mute == o.mute && fault == o.fault;
   }
 };
 
@@ -46,7 +49,7 @@ char serialLine[32];
 size_t serialLen = 0;
 
 PublishedState snapshot() {
-  return {control.status, control.out.fan, control.mode, control.out.led, control.out.buzzer, control.mute};
+  return {control.status, control.out.fan, control.mode, control.out.led, control.out.buzzer, control.mute, activeFault};
 }
 
 air::Readings currentReadings() {
@@ -115,6 +118,16 @@ void updateControl() {
   actuators::apply(control.out);
 }
 
+void updateFault() {
+  const uint8_t now = fault::compose(sensors::dhtFault(), sensors::gasFault(), display::faulted());
+  const uint8_t changed = now ^ activeFault;
+  if (changed == 0) return;
+  for (const uint8_t bit : {fault::kDht, fault::kMq135, fault::kLcd}) {
+    if (changed & bit) LOGF("fault", "%s %s", fault::label(bit), (now & bit) ? "terganggu" : "pulih");
+  }
+  activeFault = now;
+}
+
 void publishStateIfChanged() {
   const PublishedState now = snapshot();
   if (!statePending && now == lastPublished) return;
@@ -124,8 +137,8 @@ void publishStateIfChanged() {
   }
 
   char json[96];
-  snprintf(json, sizeof json, "{\"status\":%u,\"fan\":%u,\"mode\":%u,\"led\":%u,\"buzzer\":%u,\"mute\":%u}",
-           now.status, now.fan, now.mode, now.led, now.buzzer, now.mute);
+  snprintf(json, sizeof json, "{\"status\":%u,\"fan\":%u,\"mode\":%u,\"led\":%u,\"buzzer\":%u,\"mute\":%u,\"fault\":%u}",
+           now.status, now.fan, now.mode, now.led, now.buzzer, now.mute, now.fault);
   if (net::publishState(json)) {
     lastPublished = now;
     statePending = false;
@@ -170,7 +183,8 @@ void updateDisplay() {
   const sensors::Climate c = sensors::climate();
   const sensors::Gas g = sensors::gas();
   display::render({!sensors::warmedUp(), sensors::warmupRemainingMs(), sensors::warmupPercent(), c.valid,
-                   c.temperature, c.humidity, g.valid, g.ppm, control.evaluated, control.status, net::online()});
+                   c.temperature, c.humidity, g.valid, g.ppm, control.evaluated, control.status, net::online(),
+                   activeFault});
 }
 
 // ---------------------------------------------------------------------------
@@ -186,10 +200,10 @@ void printStatus() {
   LOGF("info", "DHT %s t=%.1f h=%.1f | MQ-135 %s ppm=%d Rs=%.2f kOhm R0=%.2f kOhm",
        c.valid ? "ok" : "invalid", c.temperature, c.humidity,
        !g.ready ? "pemanasan" : (g.valid ? "ok" : "invalid"), g.ppm, g.rsKOhm, config::kMq135R0KOhm);
-  LOGF("info", "mode %s, status %s, kipas %u, led %u, buzzer %u, mute %u",
+  LOGF("info", "mode %s, status %s, kipas %u, led %u, buzzer %u, mute %u, fault %u",
        control.mode == air::kManual ? "manual" : "otomatis",
        control.evaluated ? air::statusLabel(control.status) : "-", control.out.fan, control.out.led,
-       control.out.buzzer, control.mute);
+       control.out.buzzer, control.mute, activeFault);
 }
 
 void handleSerialLine(const char* line) {
@@ -233,8 +247,10 @@ void setup() {
 void loop() {
   net::loop();
   sensors::loop();
+  display::loop();
   handleSerial();
   updateControl();
+  updateFault();
   publishStateIfChanged();
   publishTelemetryIfDue();
   updateDisplay();

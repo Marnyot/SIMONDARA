@@ -5,6 +5,7 @@
 #include <math.h>
 
 #include "config.h"
+#include "fault.h"
 #include "log.h"
 
 namespace sensors {
@@ -14,7 +15,7 @@ namespace {
 DHT dht(config::kPinDht, DHT11);
 
 Climate climateState = {false, NAN, NAN};
-uint8_t dhtFailures = config::kDhtMaxFailures;  // belum ada pembacaan sukses
+fault::DhtHealth dhtHealth;
 uint32_t dhtLastAttemptMs = 0;
 uint32_t dhtNextDelayMs = 0;
 
@@ -24,7 +25,7 @@ uint8_t adcIndex = 0;
 uint32_t adcLastSampleMs = 0;
 
 Gas gasState = {false, false, 0, 0.0f};
-bool gasFault = false;
+fault::Mq135Health gasHealth;
 uint32_t warmupStartMs = 0;
 bool warm = false;
 
@@ -45,25 +46,27 @@ void readDht(uint32_t now) {
 
   const float t = dht.readTemperature(false, true);
   const float h = dht.readHumidity();
-  const bool ok = !isnan(t) && !isnan(h) && t >= config::kTempMinValid && t <= config::kTempMaxValid &&
-                  h >= 0.0f && h <= 100.0f;
+  const fault::DhtRead read = fault::classifyDht(t, h);
+  const bool wasFaulted = fault::dhtFaulted(dhtHealth);
+  fault::recordDht(dhtHealth, read);
 
-  if (ok) {
+  if (read == fault::DhtRead::kOk) {
     if (!climateState.valid) LOGF("dht", "pembacaan valid: %.1fC %.0f%%", t, h);
     climateState = {true, t, h};
-    dhtFailures = 0;
     dhtNextDelayMs = config::kDhtIntervalMs;
     return;
   }
 
   dhtNextDelayMs = config::kDhtRetryMs;
-  if (dhtFailures < config::kDhtMaxFailures) {
-    ++dhtFailures;
-    LOGF("dht", "gagal baca (%u/%u)", dhtFailures, config::kDhtMaxFailures);
-    if (dhtFailures == config::kDhtMaxFailures) {
-      climateState.valid = false;
-      LOGF("dht", "data suhu/kelembapan tidak valid, periksa kabel D6");
-    }
+  if (wasFaulted) return;
+  if (read == fault::DhtRead::kOutOfRange) {
+    LOGF("dht", "nilai di luar rentang: %.1fC %.0f%%", t, h);
+  } else {
+    LOGF("dht", "gagal baca (%u/%u)", dhtHealth.failures, config::kDhtMaxFailures);
+  }
+  if (fault::dhtFaulted(dhtHealth)) {
+    climateState.valid = false;
+    LOGF("dht", "data suhu/kelembapan tidak valid, periksa kabel D4");
   }
 }
 
@@ -83,18 +86,19 @@ void updateGas() {
   uint32_t sum = 0;
   for (uint8_t i = 0; i < adcCount; ++i) sum += adcSamples[i];
   const float adc = static_cast<float>(sum) / adcCount;
-  const float vAo = adc / 1023.0f * config::kAdcFullScaleV * config::kMq135DividerFactor;
+  const float vAo = fault::mq135Volts(adc);
 
   const bool wasValid = gasState.valid;
   gasState.ready = warm;
   gasState.valid = false;
 
-  const bool fault = vAo < config::kMq135MinValidV || vAo >= config::kMq135SupplyV;
-  if (fault != gasFault) {
-    gasFault = fault;
-    if (fault) LOGF("mq135", "tegangan tidak wajar (%.2f V), periksa kabel A0", vAo);
+  const bool wasOutOfRange = gasHealth.outOfRange;
+  const bool outOfRange = fault::mq135OutOfRange(adc);
+  fault::recordMq135(gasHealth, outOfRange);
+  if (gasHealth.outOfRange && !wasOutOfRange) {
+    LOGF("mq135", "pembacaan tidak wajar (ADC %.0f, %.2f V), periksa kabel A0 dan pembagi", adc, vAo);
   }
-  if (fault) return;
+  if (outOfRange) return;
 
   const float rs = config::kMq135LoadKOhm * (config::kMq135SupplyV - vAo) / vAo;
   gasState.rsKOhm = rs;
@@ -160,6 +164,10 @@ void loop() {
 Climate climate() { return climateState; }
 
 Gas gas() { return gasState; }
+
+bool dhtFault() { return fault::dhtFaulted(dhtHealth); }
+
+bool gasFault() { return fault::mq135Faulted(gasHealth, warm, calActive); }
 
 bool warmedUp() { return warm; }
 

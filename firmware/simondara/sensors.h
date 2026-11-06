@@ -27,6 +27,10 @@ void loop();
 Climate climate();
 Gas gas();
 
+// Gangguan perangkat keras (lihat fault.h).
+bool dhtFault();
+bool gasFault();
+
 // Pemanasan MQ-135.
 bool warmedUp();
 uint32_t warmupRemainingMs();

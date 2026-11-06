@@ -4,7 +4,10 @@
 //   "Suhu:29.4 Lb:62%"
 //   "Gas:820 Aman   x"   x = penanda offline di kolom 16
 // LCD 16 kolom tidak muat "Suhu:29.4C Lb:62%" (17 karakter), jadi satuan C
-// dihilangkan. Bila sensor tidak valid, nilai diganti pesan error.
+// dihilangkan. Bila sensor terganggu, nilai diganti "DHT ERR" / "MQ ERR".
+//
+// display::loop() mengecek modul lewat I2C tiap config::kLcdProbeIntervalMs dan
+// menginisialisasi ulang saat modul kembali menjawab.
 #pragma once
 
 #include <stdint.h>
@@ -25,9 +28,14 @@ struct View {
   bool statusKnown;
   air::Status status;
   bool online;
+  uint8_t fault;  // bitmask fault.h
 };
 
 void begin();
+void loop();
 void render(const View& v);
+
+// Modul LCD tidak menjawab I2C (termasuk tidak ada sejak boot).
+bool faulted();
 
 }  // namespace display
