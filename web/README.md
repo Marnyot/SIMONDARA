@@ -40,17 +40,17 @@ Halaman sudah berada dalam AuthProvider dan LiveProvider. Gunakan `PageHeader` u
 
 Splash menunjukkan pemeriksaan sesi, pemuatan snapshot REST/SSE, lalu Siap. Snapshot REST dijalankan bersama SSE agar perangkat baru tanpa data sensor dapat masuk tanpa nilai buatan. Snapshot SSE dianggap lengkap setelah state + online diterima, karena telemetri mungkin belum tersedia. Kegagalan awal menampilkan tombol coba lagi; sesudah tersambung data terakhir dipertahankan selama reconnect. EventSource tidak mengekspos HTTP status; kegagalan stream memicu probe sesi untuk mendeteksi 401. prefers-reduced-motion dihormati.
 
-## Deploy Netlify
+## Deploy Vercel
 
-1. Pilih **Add new site → Import from Git**, hubungkan penyedia Git, lalu pilih repositori SIMONDARA dan branch yang akan dideploy.
-2. Tetapkan **Base directory** ke `web`. Netlify membaca `web/netlify.toml`: Node.js 24, build `npm run build`, dan publish `dist` relatif terhadap base (hasilnya `web/dist` dari root repo). Nilai `base = "web"` dihitung dari root repo; jangan mengisinya dengan `web/web`. Lihat [konfigurasi build Netlify](https://docs.netlify.com/build/configure-builds/file-based-configuration/).
-3. Sebelum deploy, ganti `BACKEND_URL_RAILWAY` pada target proxy di `web/netlify.toml` dengan domain Railway sebenarnya, tanpa protokol atau slash akhir. Contoh hasil lengkap: `https://simondara-production.up.railway.app/api/:splat`. Placeholder ini literal, bukan variabel environment yang diinterpolasi Netlify.
-4. Atur `WEB_ORIGIN` pada service backend Railway ke origin HTTPS Netlify persis, misalnya `https://simondara.netlify.app`, tanpa trailing slash. Browser tetap memanggil `/api` relatif melalui proxy Netlify sehingga cookie sesi menjadi first-party; login, `/api/auth/me`, dan `/api/stream` harus melewati proxy yang sama.
-5. Deploy dan periksa `/api/health`, login, `/api/auth/me`, SSE, serta muat ulang langsung di `/kontrol` dan `/riwayat`. Proxy `/api/*` berstatus 200 dan `force = true` ditempatkan sebelum fallback SPA `/*` → `/index.html` agar request API diteruskan ke backend.
+1. Pilih **Add New → Project**, impor repositori `Marnyot/SIMONDARA`.
+2. Tetapkan **Root Directory** ke `web` dan **Framework Preset** ke Vite. Build `npm run build` dan output `dist` memakai default; Node.js 24.x. Vercel membaca `web/vercel.json`.
+3. `web/vercel.json` me-rewrite `/api/*` ke `https://simondara-production.up.railway.app/api/*` sebelum fallback SPA ke `/index.html`. Jika domain Railway berubah, ganti target ini lalu deploy ulang.
+4. Atur `WEB_ORIGIN` pada service backend Railway ke origin HTTPS Vercel persis, misalnya `https://simondara.vercel.app`, tanpa trailing slash. Browser tetap memanggil `/api` relatif melalui rewrite Vercel sehingga cookie sesi menjadi first-party; login, `/api/auth/me`, dan `/api/stream` harus melewati rewrite yang sama.
+5. Deploy dan periksa `/api/health`, login, `/api/auth/me`, SSE, serta muat ulang langsung di `/kontrol` dan `/riwayat`.
 
-Placeholder backend wajib diganti sebelum deployment. Tidak perlu env web atau membocorkan URL broker ke browser.
+Tidak perlu env web atau membocorkan URL broker ke browser.
 
-[Proxy Netlify membatasi durasi request hingga 26 detik](https://docs.netlify.com/manage/routing/redirects/rewrites-proxies/), sehingga SSE `/api/stream` dapat terputus dan tersambung ulang secara berkala. `LiveProvider` sudah menangani reconnect dengan backoff 1–30 detik dan jitter, sementara backend mengirim snapshot terbaru setiap koneksi; data terakhir tetap ditampilkan selama reconnect. Periksa siklus ini setelah deploy karena lint dan build lokal tidak memverifikasi perilaku proxy Netlify.
+Rewrite eksternal Vercel dapat memutus request yang berjalan lama, sehingga SSE `/api/stream` dapat terputus dan tersambung ulang secara berkala. `LiveProvider` sudah menangani reconnect dengan backoff 1–30 detik dan jitter, sementara backend mengirim snapshot terbaru setiap koneksi; data terakhir tetap ditampilkan selama reconnect.
 
 ## PWA
 
