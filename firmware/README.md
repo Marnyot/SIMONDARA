@@ -15,30 +15,32 @@ firmware/
 │   ├── simondara.ino      setup/loop, parsing cmd (ArduinoJson), publish state & telemetri
 │   ├── config.h           pin, polaritas aktuator, ambang, kalibrasi MQ-135, interval
 │   ├── air_status.*       logika status + histeresis + aturan aktuator (murni, dites di host)
+│   ├── fault.*            penentu bitmask gangguan perangkat keras (murni, dites di host)
 │   ├── sensors.*          DHT11 (validasi + retry), MQ-135 (rata-rata 10 sampel, pemanasan, kalibrasi R0)
 │   ├── actuators.*        LED, buzzer, relay (level aman sebelum pinMode)
-│   ├── display.*          LCD I2C (deteksi alamat 0x27/0x3F)
+│   ├── display.*          LCD I2C (deteksi alamat 0x27/0x3F, probe berkala, init ulang)
 │   ├── net.*              Wi-Fi, NTP, MQTT (TLS/non-TLS), reconnect dengan backoff
 │   ├── ca_cert.h          DigiCert Global Root G2 + Global Root CA untuk EMQX
 │   └── log.h              logging Serial 115200
-└── test/test_air_status.cpp
+└── test/                  test_air_status.cpp, test_fault.cpp
 ```
 
 ## Wiring ringkas
 
 | Komponen | Pin NodeMCU | Catatan |
 | --- | --- | --- |
-| DHT11 data | D6 (GPIO12) | VCC 3V3 |
-| MQ-135 AO | A0 | lewat pembagi 10 kΩ (atas) / 20 kΩ (bawah), VCC ke VIN 5 V |
+| DHT11 data | D4 (GPIO2) | VCC 3V3; pull-up modul menjaga D4 HIGH saat boot |
+| MQ-135 AO | A0 | lewat pembagi dua resistor sama (faktor 2), VCC ke VIN 5 V; RL modul 1 kΩ (kode 102) |
 | LCD I2C SDA / SCL | D2 / D1 | alamat 0x27, otomatis mencoba 0x3F |
 | LED hijau | D0 (GPIO16) | aktif HIGH: D0 → 220 Ω → LED → GND |
 | LED kuning | D7 (GPIO13) | aktif HIGH |
 | LED merah | D3 (GPIO0) | **aktif LOW**: 3V3 → 220 Ω → LED → D3 |
-| Buzzer aktif | D4 (GPIO2) | **aktif LOW** (modul low-level trigger / transistor PNP); LED onboard ikut menyala |
-| Relay IN | D5 (GPIO14) | modul relay low-level trigger, VCC ke VIN |
+| Buzzer aktif | D6 (GPIO12) | **aktif LOW** (modul low-level trigger) |
+| Relay IN | D5 (GPIO14) | modul relay **aktif HIGH** (HIGH = kipas menyala), VCC ke VIN |
 
-D3 (GPIO0) dan D4 (GPIO2) harus HIGH saat boot, D8 (GPIO15) harus LOW (tidak dipakai). Karena itu
-LED merah dan buzzer dirangkai aktif LOW: level "mati" = HIGH, sama dengan syarat boot. Firmware
+Pin dan polaritas di atas mengikuti alat yang sudah diuji tim. D3 (GPIO0) dan D4 (GPIO2) harus HIGH
+saat boot, D8 (GPIO15) harus LOW (tidak dipakai). Karena itu LED merah dirangkai aktif LOW dan D4
+dipakai untuk data DHT11 yang memiliki pull-up. Firmware
 menulis level mati ke setiap pin **sebelum** `pinMode(OUTPUT)`. Bila rangkaian berbeda, ubah
 konstanta `LED_*_ACTIVE_LOW`, `BUZZER_ACTIVE_LOW`, dan `RELAY_ACTIVE_LOW` di `config.h`.
 
@@ -114,9 +116,9 @@ Atau lewat Makefile: `make -C firmware compile`, `make -C firmware upload PORT=/
 make -C firmware test
 ```
 
-Mengompilasi `simondara/air_status.cpp` dengan `c++ -std=c++17 -Wall -Wextra -Werror` dan menguji
-klasifikasi ambang, status terburuk, histeresis kipas 1000/900 ppm, aturan aktuator, mute, dan
-penanganan cmd.
+Mengompilasi `simondara/air_status.cpp` dan `simondara/fault.cpp` dengan
+`c++ -std=c++17 -Wall -Wextra -Werror` dan menguji klasifikasi ambang, status terburuk, histeresis
+kipas 1000/900 ppm, aturan aktuator, mute, penanganan cmd, dan penentu gangguan perangkat keras.
 
 ## Kalibrasi R0 MQ-135
 
@@ -153,18 +155,46 @@ Rumus: `Rs = RL × (Vc − Vao) / Vao`, dengan `Vao = ADC/1023 × 3,2 V × 1,5`,
   diproses setelah `mode`, sehingga `{"mode":1,"fan":1}` langsung berlaku. Field yang bukan integer
   atau di luar rentang diabaikan per-field; JSON rusak atau payload > 256 byte diabaikan.
 - **Sensor:** DHT11 dibaca tiap 2 dtk; gagal diulang setelah 1,1 dtk dan baru dianggap tidak valid
-  setelah 3 kegagalan beruntun. MQ-135 disampel tiap 200 ms, rata-rata bergulir 10 sampel. Data tidak
-  valid ditampilkan sebagai error di LCD dan telemetri tidak dikirim.
+  setelah 3 kegagalan beruntun, atau langsung bila nilainya di luar rentang. MQ-135 disampel tiap
+  200 ms, rata-rata bergulir 10 sampel. Data tidak valid ditampilkan sebagai error di LCD dan
+  telemetri tidak dikirim.
 - **LCD (±2 dtk):** `Suhu:29.4 Lb:62%` / `Gas:820 Aman`. Satuan "C" dihilangkan karena
   `Suhu:29.4C Lb:62%` (17 karakter) tidak muat di 16 kolom. Glyph antena bersilang di kolom 16
   menandakan broker offline.
 - **MQTT:** client ID `simondara-<DEVICE_ID>-<chipId>`, keep-alive 30 dtk, LWT
   `simondara/<id>/online` = `"0"` (retained, QoS1), `"1"` retained saat connect, subscribe `cmd`
-  QoS1, `state` retained saat connect dan saat berubah, telemetri tiap 10 dtk (`ts` = epoch NTP,
-  0 bila belum sinkron).
+  QoS1, `state` retained saat connect dan saat berubah (termasuk saat `fault` berubah), telemetri
+  tiap 10 dtk (`ts` = epoch NTP, 0 bila belum sinkron).
 - **Reconnect:** Wi-Fi dan MQTT memakai backoff eksponensial 2 dtk → 60 dtk berbasis `millis()`.
   Satu percobaan connect MQTT (terutama handshake TLS) dapat memblokir loop beberapa detik;
   di luar itu loop tidak memakai `delay()`.
+
+### Diagnosis gangguan perangkat keras
+
+Setiap payload `state` memuat `fault`, bitmask gangguan yang terdeteksi (0 = semua normal):
+
+```json
+{"status":0,"fan":0,"mode":0,"led":1,"buzzer":0,"mute":0,"fault":0}
+```
+
+| Bit | Komponen | Terdeteksi bila | Pulih bila | LCD | Periksa |
+| --- | --- | --- | --- | --- | --- |
+| 1 | DHT11 | gagal baca ≥ 3 kali beruntun (±3 dtk), atau nilai di luar −10…60 °C / 0…100 % | ada pembacaan valid | `DHT ERR` (saat pemanasan `Panas DHT ERR`) | kabel data D4, catu 3V3 |
+| 2 | MQ-135 | rata-rata ADC < 2 (sensor lepas), ADC ≥ 1015 (mentok), atau tegangan AO ≥ 5 V (pembagi bermasalah), bertahan 10 sampel beruntun (±2 dtk) | kondisi normal 10 sampel beruntun | `MQ ERR` | kabel A0, pembagi tegangan, catu VIN 5 V |
+| 4 | LCD | modul tidak menjawab I2C di 0x27/0x3F (probe ±5 dtk), termasuk tidak ada sejak boot | modul menjawab lagi; LCD diinisialisasi ulang dan isinya tampil lagi ≤ 2 dtk | – | kabel SDA D2 / SCL D1, catu modul |
+
+- `state` dikirim (retained) setiap `fault` berubah. Log Serial mencetak `[fault] <komponen> terganggu`
+  saat gangguan muncul dan `[fault] <komponen> pulih` saat kembali normal. Perintah `status` mencetak
+  nilai `fault` saat ini.
+- Bit 2 tidak dilaporkan selama pemanasan 3 menit dan selama kalibrasi R0. Bila gangguan sudah aktif
+  saat `cal` dimulai, bit 2 hilang selama kalibrasi dan muncul lagi setelahnya jika sensor masih terganggu.
+- Ambang MQ-135 memakai count ADC karena RL 1 kΩ membuat ADC udara bersih hanya ±8–10 (±0,06 V).
+  Ambang ada di `kMq135AdcMinValid` dan `kMq135AdcRailMin` (`config.h`); sesuaikan bila rangkaian berbeda.
+- Tegangan AO ≥ 5 V setara ADC ±799 dengan pembagi 2,0, jadi pada alat ini batas tersebut tercapai
+  lebih dulu daripada ADC mentok.
+- Kipas/relay, buzzer, dan LED tidak punya umpan balik sehingga gangguannya tidak dapat dideteksi.
+- Kehilangan catu LCD di antara dua probe (< 5 dtk) tidak terdeteksi: layar tetap kosong sampai
+  firmware di-reset.
 
 ### Keterbatasan yang diketahui
 
@@ -177,6 +207,6 @@ Rumus: `Rs = RL × (Vc − Vao) / Vao`, dengan `Vao = ADC/1023 × 3,2 V × 1,5`,
 
 | Perintah | Fungsi |
 | --- | --- |
-| `status` | cetak heap, koneksi, pembacaan sensor, Rs/R0, mode, status, aktuator |
+| `status` | cetak heap, koneksi, pembacaan sensor, Rs/R0, mode, status, aktuator, fault |
 | `cal` | kalibrasi R0 60 detik di udara bersih |
 | `help` | daftar perintah |

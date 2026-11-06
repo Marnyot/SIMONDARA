@@ -5,16 +5,21 @@ FQBN ?= esp8266:esp8266:nodemcuv2
 PORT ?=
 
 BUILD := build
-TEST_BIN := $(BUILD)/test_air_status
+TEST_BINS := $(BUILD)/test_air_status $(BUILD)/test_fault
 
 .PHONY: test compile upload clean
 
-test: $(TEST_BIN)
-	./$(TEST_BIN)
+test: $(TEST_BINS)
+	./$(BUILD)/test_air_status
+	./$(BUILD)/test_fault
 
-$(TEST_BIN): test/test_air_status.cpp simondara/air_status.cpp simondara/air_status.h simondara/config.h
+$(BUILD)/test_air_status: test/test_air_status.cpp simondara/air_status.cpp simondara/air_status.h simondara/config.h
 	@mkdir -p $(BUILD)
 	$(CXX) $(CXXFLAGS) -Isimondara -o $@ test/test_air_status.cpp simondara/air_status.cpp
+
+$(BUILD)/test_fault: test/test_fault.cpp simondara/fault.cpp simondara/fault.h simondara/config.h
+	@mkdir -p $(BUILD)
+	$(CXX) $(CXXFLAGS) -Isimondara -o $@ test/test_fault.cpp simondara/fault.cpp
 
 compile:
 	$(ARDUINO_CLI) compile --fqbn $(FQBN) --warnings all simondara
