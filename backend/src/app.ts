@@ -7,10 +7,16 @@ import { createHash, randomBytes } from 'node:crypto';
 import { z, ZodError } from 'zod';
 import type { ServerResponse } from 'node:http';
 import type { Config } from './config.js';
-import { Store } from './store.js';
+import { RoomConflict, Store } from './store.js';
 import { Bridge } from './bridge.js';
 import { Telegram } from './telegram.js';
-import { commandSchema, eventsQuerySchema, historySchema } from './schemas.js';
+import {
+  commandSchema,
+  createRoomSchema,
+  updateRoomSchema,
+  eventsQuerySchema,
+  historySchema,
+} from './schemas.js';
 import { verifyPassword } from './password.js';
 
 const sessionDuration = 7 * 86_400_000;
@@ -35,7 +41,7 @@ export async function buildApp(
             ],
           },
   });
-  const store = new Store(config.DB_PATH);
+  const store = new Store(config.DB_PATH, config.DEVICE_ID);
   const bridge = new Bridge(store, app.log);
   const telegram = new Telegram(config, bridge, app.log);
   const streams = new Map<ServerResponse, string>();
@@ -49,6 +55,8 @@ export async function buildApp(
   let prune: ReturnType<typeof setInterval> | undefined;
 
   app.setErrorHandler((error, _request, reply) => {
+    if (error instanceof RoomConflict)
+      return reply.code(409).send({ error: error.code });
     if (error instanceof ZodError)
       return reply.code(400).send({
         error: 'Input tidak valid',
@@ -133,23 +141,75 @@ export async function buildApp(
       return reply.clearCookie('session', cookieOptions).code(204).send();
     });
     protectedApp.get('/api/auth/me', async () => ({ user: 'pengelola' }));
-    protectedApp.get('/api/state', async () => bridge.snapshot);
-    protectedApp.get('/api/history', async (request) => {
-      const query = historySchema.parse(request.query);
-      return { points: store.history(query.from, query.to, query.bucket) };
+    protectedApp.get('/api/rooms', async () => store.roomList());
+    protectedApp.post('/api/rooms', async (request, reply) => {
+      const { deviceId, name } = createRoomSchema.parse(request.body);
+      const room = store.createRoom(deviceId, name);
+      bridge.roomsChanged();
+      return reply.code(201).send(room);
     });
-    protectedApp.get('/api/events', async (request) => {
-      const { limit } = eventsQuerySchema.parse(request.query);
-      return { events: store.events(limit) };
-    });
-    protectedApp.post('/api/cmd', async (request, reply) => {
-      const command = commandSchema.parse(request.body);
-      try {
-        await bridge.publish(command);
-      } catch {
-        return reply.code(503).send({ error: 'Broker MQTT belum terhubung' });
-      }
-      return reply.code(202).send();
+    await protectedApp.register(async (roomApp) => {
+      roomApp.addHook('onRequest', async (request, reply) => {
+        const { deviceId } = request.params as { deviceId: string };
+        if (!store.room(deviceId))
+          return reply.code(404).send({ error: 'room_not_found' });
+      });
+      roomApp.patch<{ Params: { deviceId: string } }>(
+        '/api/rooms/:deviceId',
+        async (request) => {
+          const { name } = updateRoomSchema.parse(request.body);
+          const room = store.renameRoom(request.params.deviceId, name);
+          bridge.roomsChanged();
+          return room;
+        },
+      );
+      roomApp.delete<{ Params: { deviceId: string } }>(
+        '/api/rooms/:deviceId',
+        async (request, reply) => {
+          store.deleteRoom(request.params.deviceId);
+          bridge.roomsChanged();
+          return reply.code(204).send();
+        },
+      );
+      roomApp.get<{ Params: { deviceId: string } }>(
+        '/api/rooms/:deviceId/state',
+        async (request) => bridge.snapshot(request.params.deviceId),
+      );
+      roomApp.get<{ Params: { deviceId: string } }>(
+        '/api/rooms/:deviceId/history',
+        async (request) => {
+          const query = historySchema.parse(request.query);
+          return {
+            points: store.history(
+              request.params.deviceId,
+              query.from,
+              query.to,
+              query.bucket,
+            ),
+          };
+        },
+      );
+      roomApp.get<{ Params: { deviceId: string } }>(
+        '/api/rooms/:deviceId/events',
+        async (request) => {
+          const { limit } = eventsQuerySchema.parse(request.query);
+          return { events: store.events(request.params.deviceId, limit) };
+        },
+      );
+      roomApp.post<{ Params: { deviceId: string } }>(
+        '/api/rooms/:deviceId/cmd',
+        async (request, reply) => {
+          const command = commandSchema.parse(request.body);
+          try {
+            await bridge.publish(request.params.deviceId, command);
+          } catch {
+            return reply
+              .code(503)
+              .send({ error: 'Broker MQTT belum terhubung' });
+          }
+          return reply.code(202).send();
+        },
+      );
     });
     protectedApp.get('/api/stream', async (request, reply) => {
       const id = sessionKey(
@@ -176,9 +236,13 @@ export async function buildApp(
             reply.raw.destroy();
         }
       };
-      send('state', bridge.snapshot.state);
-      send('online', { online: bridge.snapshot.online });
-      send('telemetry', bridge.snapshot.telemetry);
+      send('rooms', store.roomList());
+      for (const room of store.rooms()) {
+        const { deviceId } = room;
+        send('state', { ...room.state, deviceId });
+        send('online', { deviceId, online: room.online });
+        send('telemetry', { ...room.telemetry, deviceId });
+      }
       bridge.events.on('update', send);
       const heartbeat = setInterval(() => {
         if (

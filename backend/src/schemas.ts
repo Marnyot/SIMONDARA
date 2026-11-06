@@ -1,5 +1,12 @@
 import { z } from 'zod';
 
+export const deviceIdSchema = z.string().regex(/^[a-z0-9][a-z0-9-]{0,31}$/);
+export const roomNameSchema = z.string().trim().min(1).max(40);
+export const createRoomSchema = z
+  .object({ deviceId: deviceIdSchema, name: roomNameSchema })
+  .strict();
+export const updateRoomSchema = z.object({ name: roomNameSchema }).strict();
+
 const bit = z.union([z.literal(0), z.literal(1)]);
 export const telemetrySchema = z
   .object({
@@ -17,10 +24,11 @@ export const stateSchema = z
     led: z.union([z.literal(0), z.literal(1), z.literal(2), z.literal(3)]),
     buzzer: bit,
     mute: bit,
+    fault: z.number().int().min(0).max(7).default(0),
   })
   .strict();
 export const commandSchema = stateSchema
-  .omit({ status: true })
+  .omit({ status: true, fault: true })
   .partial()
   .refine(
     (value) => Object.keys(value).length > 0,
@@ -50,6 +58,11 @@ export interface Snapshot {
   state: State | null;
   telemetry: TelemetryPoint | null;
   updatedAt: string | null;
+}
+export interface Room extends Snapshot {
+  deviceId: string;
+  name: string;
+  createdAt: string;
 }
 export const snapshotSchema = z.object({
   online: z.boolean(),

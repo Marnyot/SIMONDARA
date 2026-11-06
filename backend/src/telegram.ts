@@ -3,7 +3,13 @@ import { z } from 'zod';
 import type { FastifyBaseLogger } from 'fastify';
 import type { Bridge } from './bridge.js';
 import type { Config } from './config.js';
-import type { Snapshot } from './schemas.js';
+import type { Room, Snapshot } from './schemas.js';
+
+const faultComponents = [
+  [1, 'Sensor suhu/kelembapan (DHT11)'],
+  [2, 'Sensor gas (MQ-135)'],
+  [4, 'Layar LCD'],
+] as const;
 
 export function sensorText(snapshot: Snapshot): string {
   const t = snapshot.telemetry;
@@ -12,7 +18,10 @@ export function sensorText(snapshot: Snapshot): string {
     : 'Data sensor belum tersedia.';
 }
 export function statusText(snapshot: Snapshot): string {
-  return `SIMONDARA: ${snapshot.online ? 'online' : 'offline'}. Status ${snapshot.state ? ['Aman', 'Waspada', 'Bahaya'][snapshot.state.status] : 'belum tersedia'}. ${sensorText(snapshot)}`;
+  const faults = faultComponents
+    .filter(([bit]) => (snapshot.state?.fault ?? 0) & bit)
+    .map(([, name]) => name);
+  return `SIMONDARA: ${snapshot.online ? 'online' : 'offline'}. Status ${snapshot.state ? ['Aman', 'Waspada', 'Bahaya'][snapshot.state.status] : 'belum tersedia'}. ${sensorText(snapshot)}${faults.length ? ` Gangguan: ${faults.join(', ')}.` : ''}`;
 }
 
 // Deterministic transition logic; offline grace is checked periodically by the bot.
@@ -20,12 +29,14 @@ export class Notifications {
   private previousStatus: number | undefined;
   private dangerSeen: boolean;
   private previousOnline: boolean;
+  private previousFault: number;
   private offlineAt: number | undefined;
   private offlineSent = false;
   constructor(snapshot: Snapshot) {
     this.previousStatus = snapshot.state?.status;
     this.dangerSeen = this.previousStatus === 2;
     this.previousOnline = snapshot.online;
+    this.previousFault = snapshot.state?.fault ?? 0;
   }
   update(snapshot: Snapshot, now = Date.now()): string[] {
     const messages: string[] = [];
@@ -44,6 +55,14 @@ export class Notifications {
       }
       this.previousStatus = status;
     }
+    const fault = snapshot.state?.fault ?? 0;
+    for (const [bit, name] of faultComponents) {
+      if ((fault & bit) === (this.previousFault & bit)) continue;
+      messages.push(
+        fault & bit ? `Gangguan ${name}` : `${name} normal kembali`,
+      );
+    }
+    this.previousFault = fault;
     if (this.previousOnline && !snapshot.online) this.offlineAt = now;
     if (snapshot.online) {
       if (this.offlineSent)
@@ -65,7 +84,7 @@ export class Notifications {
   }
 }
 const help =
-  'SIMONDARA\n/status — kondisi terkini\n/kipas_on — mode manual, kipas menyala\n/kipas_off — mode manual, kipas mati\n/otomatis — mode otomatis\n/help — bantuan';
+  'SIMONDARA\n/status [kamar] — kondisi terkini\n/kipas_on <kamar> — mode manual, kipas menyala\n/kipas_off <kamar> — mode manual, kipas mati\n/otomatis <kamar> — mode otomatis\n/help — bantuan';
 const updatesSchema = z.array(
   z.object({
     update_id: z.number().int(),
@@ -78,11 +97,31 @@ const updatesSchema = z.array(
   }),
 );
 
+export function parseTelegramCommand(text: string) {
+  const match = /^(\/[^\s@]+)(?:@[^\s]+)?(?:\s+(.+))?$/s.exec(text.trim());
+  return match
+    ? { command: match[1]!.toLowerCase(), argument: match[2]?.trim() ?? '' }
+    : null;
+}
+export function resolveRoom(rooms: Room[], argument: string): Room | undefined {
+  if (!argument) return rooms.length === 1 ? rooms[0] : undefined;
+  const key = argument.toLowerCase();
+  // Device identity takes precedence if a room name happens to match another ID.
+  return (
+    rooms.find((room) => room.deviceId.toLowerCase() === key) ??
+    rooms.find((room) => room.name.toLowerCase() === key)
+  );
+}
+const roomListText = (rooms: Room[]) =>
+  rooms.length
+    ? `Pilih kamar:\n${rooms.map((room) => `${room.name} (${room.deviceId})`).join('\n')}`
+    : 'Belum ada kamar terdaftar.';
+
 export class Telegram {
   private readonly abort = new AbortController();
   private polling: Promise<void> | undefined;
   private timer: ReturnType<typeof setInterval> | undefined;
-  private readonly notifications: Notifications;
+  private readonly notifications = new Map<string, Notifications>();
   private readonly pending = new Set<Promise<void>>();
   private readonly onUpdate = () => this.notify();
   constructor(
@@ -90,7 +129,7 @@ export class Telegram {
     private readonly bridge: Bridge,
     private readonly log: FastifyBaseLogger,
   ) {
-    this.notifications = new Notifications(bridge.snapshot);
+    this.syncRooms();
   }
   start() {
     if (!this.config.TELEGRAM_BOT_TOKEN) return;
@@ -98,11 +137,71 @@ export class Telegram {
     this.timer = setInterval(() => this.notify(), 1000);
     this.polling = this.poll();
   }
+  private syncRooms() {
+    const rooms = this.bridge.store.rooms();
+    const ids = new Set(rooms.map((room) => room.deviceId));
+    for (const id of this.notifications.keys())
+      if (!ids.has(id)) this.notifications.delete(id);
+    for (const room of rooms)
+      if (!this.notifications.has(room.deviceId))
+        this.notifications.set(room.deviceId, new Notifications(room));
+    return rooms;
+  }
   private notify() {
-    for (const message of this.notifications.update(this.bridge.snapshot)) {
-      const sending = this.send(message);
-      this.pending.add(sending);
-      void sending.finally(() => this.pending.delete(sending));
+    for (const room of this.syncRooms()) {
+      for (const message of this.notifications
+        .get(room.deviceId)!
+        .update(room)) {
+        const sending = this.send(`${room.name}: ${message}`);
+        this.pending.add(sending);
+        void sending.finally(() => this.pending.delete(sending));
+      }
+    }
+  }
+  async handleCommand(text: string) {
+    const parsed = parseTelegramCommand(text);
+    if (!parsed) return;
+    const { command, argument } = parsed;
+    const rooms = this.bridge.store.rooms();
+    if (command === '/start' || command === '/help') {
+      await this.send(help);
+      return;
+    }
+    if (command === '/status' && !argument) {
+      await this.send(
+        rooms.length
+          ? rooms.map((room) => `${room.name}: ${statusText(room)}`).join('\n')
+          : roomListText(rooms),
+      );
+      return;
+    }
+    if (!['/status', '/kipas_on', '/kipas_off', '/otomatis'].includes(command))
+      return;
+    const room = resolveRoom(rooms, argument);
+    if (!room) {
+      await this.send(
+        argument
+          ? `Kamar tidak ditemukan.\n${roomListText(rooms)}`
+          : roomListText(rooms),
+      );
+      return;
+    }
+    if (command === '/status') {
+      await this.send(`${room.name}: ${statusText(room)}`);
+      return;
+    }
+    try {
+      await this.bridge.publish(
+        room.deviceId,
+        command === '/otomatis'
+          ? { mode: 0 }
+          : { mode: 1, fan: command === '/kipas_on' ? 1 : 0 },
+      );
+      await this.send(`${room.name}: Perintah dikirim ke perangkat.`);
+    } catch {
+      await this.send(
+        `${room.name}: Perintah gagal dikirim: broker belum terhubung.`,
+      );
     }
   }
   private async api(method: string, body: object): Promise<unknown> {
@@ -170,27 +269,7 @@ export class Telegram {
             String(message.chat.id) !== this.config.TELEGRAM_CHAT_ID
           )
             continue;
-          const command = message.text?.trim().split(/\s/)[0]?.split('@')[0];
-          if (command === '/status')
-            await this.send(statusText(this.bridge.snapshot));
-          else if (command === '/start' || command === '/help')
-            await this.send(help);
-          else if (
-            ['/kipas_on', '/kipas_off', '/otomatis'].includes(command ?? '')
-          ) {
-            try {
-              await this.bridge.publish(
-                command === '/otomatis'
-                  ? { mode: 0 }
-                  : { mode: 1, fan: command === '/kipas_on' ? 1 : 0 },
-              );
-              await this.send('Perintah dikirim ke perangkat.');
-            } catch {
-              await this.send(
-                'Perintah gagal dikirim: broker belum terhubung.',
-              );
-            }
-          }
+          if (message.text) await this.handleCommand(message.text);
         }
         backoff = 1000;
       } catch {

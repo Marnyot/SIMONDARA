@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { passwordHashPattern } from './password.js';
+import { deviceIdSchema } from './schemas.js';
 const envSchema = z
   .object({
     NODE_ENV: z
@@ -15,10 +16,7 @@ const envSchema = z
       ),
     MQTT_USERNAME: z.string().min(1),
     MQTT_PASSWORD: z.string().min(1),
-    DEVICE_ID: z
-      .string()
-      .regex(/^[a-zA-Z0-9_-]+$/)
-      .default('kos-01'),
+    DEVICE_ID: deviceIdSchema.default('kos-01'),
     DB_PATH: z.string().min(1).default('./data/simondara.db'),
     ADMIN_PASSWORD_HASH: z
       .string()
