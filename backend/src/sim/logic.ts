@@ -6,6 +6,7 @@ export const initialState: State = {
   led: 1,
   buzzer: 0,
   mute: 0,
+  fault: 0,
 };
 export function statusFor({ t, h, ppm }: Telemetry): State['status'] {
   if (t > 33 || h < 30 || h > 70 || ppm > 2000) return 2;

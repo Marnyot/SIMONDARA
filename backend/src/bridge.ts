@@ -4,30 +4,25 @@ import type { FastifyBaseLogger } from 'fastify';
 import type { Config } from './config.js';
 import {
   commandSchema,
+  deviceIdSchema,
   onlineSchema,
   stateSchema,
   telemetrySchema,
   type Command,
-  type Snapshot,
 } from './schemas.js';
 import type { Store } from './store.js';
 
 export class Bridge {
   readonly events = new EventEmitter();
-  readonly snapshot: Snapshot;
   private client: MqttClient | undefined;
-  private commandTopic = '';
   constructor(
-    private readonly store: Store,
+    readonly store: Store,
     private readonly log: FastifyBaseLogger,
   ) {
-    this.snapshot = store.restore();
     // Each SSE client owns one listener and removes it on close.
     this.events.setMaxListeners(0);
   }
   start(config: Config) {
-    const base = `simondara/${config.DEVICE_ID}`;
-    this.commandTopic = `${base}/cmd`;
     this.client = mqtt.connect(config.MQTT_URL, {
       username: config.MQTT_USERNAME,
       password: config.MQTT_PASSWORD,
@@ -40,7 +35,7 @@ export class Bridge {
     this.client.on('connect', () => {
       this.log.info('MQTT terhubung');
       this.client!.subscribe(
-        [`${base}/telemetry`, `${base}/state`, `${base}/online`],
+        ['simondara/+/telemetry', 'simondara/+/state', 'simondara/+/online'],
         { qos: 1 },
         (err, granted) => {
           if (err || granted?.some((item) => Number(item.qos) === 128))
@@ -53,11 +48,21 @@ export class Bridge {
       this.log.warn('Koneksi MQTT gagal; akan dicoba ulang'),
     );
     this.client.on('message', (topic, payload) => {
-      if (!topic.startsWith(`${base}/`)) return;
-      this.ingest(topic.slice(base.length + 1), payload.toString('utf8'));
+      this.ingest(topic, payload.toString('utf8'));
     });
   }
-  ingest(kind: string, raw: string, now = new Date()) {
+  snapshot(deviceId: string) {
+    return this.store.restore(deviceId);
+  }
+  roomsChanged() {
+    this.events.emit('update', 'rooms', this.store.roomList());
+  }
+  ingest(topic: string, raw: string, now = new Date()) {
+    const parts = topic.split('/');
+    if (parts.length !== 3 || parts[0] !== 'simondara') return;
+    const [, deviceId, kind] = parts;
+    if (!deviceIdSchema.safeParse(deviceId).success || !deviceId || !kind)
+      return;
     if (!['telemetry', 'state', 'online'].includes(kind)) return;
     if (Buffer.byteLength(raw) > 16_384) {
       this.log.warn({ kind }, 'Payload MQTT terlalu besar; diabaikan');
@@ -85,6 +90,7 @@ export class Bridge {
       );
       return;
     }
+    const snapshot = this.snapshot(deviceId);
     try {
       this.store.db.transaction(() => {
         if (kind === 'telemetry') {
@@ -93,44 +99,47 @@ export class Bridge {
             ...telemetry,
             at: telemetry.ts ? new Date(telemetry.ts * 1000).toISOString() : at,
           };
-          this.store.telemetry(point);
-          this.snapshot.telemetry = point;
+          this.store.telemetry(deviceId, point);
+          snapshot.telemetry = point;
         } else if (kind === 'state') {
           const state = stateSchema.parse(parsed.data);
-          if (this.snapshot.state?.status !== state.status)
-            this.store.event(at, 'status', state.status);
-          this.snapshot.state = state;
+          if (snapshot.state?.status !== state.status)
+            this.store.event(deviceId, at, 'status', state.status);
+          snapshot.state = state;
         } else {
           const online = parsed.data === '1';
-          if (
-            this.snapshot.online !== online ||
-            this.snapshot.updatedAt === null
-          )
-            this.store.event(at, 'online', Number(online));
-          this.snapshot.online = online;
+          if (snapshot.online !== online || snapshot.updatedAt === null)
+            this.store.event(deviceId, at, 'online', Number(online));
+          snapshot.online = online;
         }
-        this.snapshot.updatedAt = at;
-        this.store.save(this.snapshot);
+        snapshot.updatedAt = at;
+        this.store.save(deviceId, snapshot);
       })();
     } catch (err) {
       this.log.error({ err }, 'Gagal menyimpan pesan MQTT');
-      Object.assign(this.snapshot, this.store.restore());
       return;
     }
     const value =
       kind === 'online'
-        ? { online: this.snapshot.online }
-        : this.snapshot[kind as 'state' | 'telemetry'];
-    this.events.emit('update', kind, value);
+        ? { online: snapshot.online }
+        : snapshot[kind as 'state' | 'telemetry'];
+    if (this.store.room(deviceId))
+      this.events.emit('update', kind, { ...value, deviceId });
+    else this.roomsChanged();
   }
-  async publish(command: Command): Promise<void> {
+  async publish(deviceId: string, command: Command): Promise<void> {
+    deviceIdSchema.parse(deviceId);
     const valid = commandSchema.parse(command);
     if (!this.client?.connected) throw new Error('Broker MQTT belum terhubung');
     // Never queue stale actuator commands while disconnected.
-    await this.client.publishAsync(this.commandTopic, JSON.stringify(valid), {
-      qos: 1,
-      retain: false,
-    });
+    await this.client.publishAsync(
+      `simondara/${deviceId}/cmd`,
+      JSON.stringify(valid),
+      {
+        qos: 1,
+        retain: false,
+      },
+    );
   }
   async close() {
     if (this.client) await this.client.endAsync(true);

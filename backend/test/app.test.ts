@@ -28,13 +28,14 @@ describe('authenticated API', () => {
     expect((await ctx.app.inject('/api/health')).json()).toEqual({ ok: true });
     for (const url of [
       '/api/auth/me',
-      '/api/state',
-      '/api/history',
-      '/api/events',
+      '/api/rooms',
+      '/api/rooms/kos-01/state',
+      '/api/rooms/kos-01/history',
+      '/api/rooms/kos-01/events',
       '/api/stream',
     ])
       expect((await ctx.app.inject(url)).statusCode).toBe(401);
-    for (const url of ['/api/cmd', '/api/auth/logout'])
+    for (const url of ['/api/rooms/kos-01/cmd', '/api/auth/logout'])
       expect((await ctx.app.inject({ method: 'POST', url })).statusCode).toBe(
         401,
       );
@@ -76,12 +77,18 @@ describe('authenticated API', () => {
   });
   it('validates cmd and query boundaries; acknowledges publishing only on success', async () => {
     const publish = vi.spyOn(ctx.bridge, 'publish').mockResolvedValue();
-    for (const payload of [{}, { fan: 7 }, { fan: 1, extra: true }])
+    for (const payload of [
+      {},
+      { fan: 7 },
+      { fan: 1, extra: true },
+      { fault: 1 },
+      { mode: 1, fault: 0 },
+    ])
       expect(
         (
           await ctx.app.inject({
             method: 'POST',
-            url: '/api/cmd',
+            url: '/api/rooms/kos-01/cmd',
             headers: { cookie },
             payload,
           })
@@ -91,19 +98,22 @@ describe('authenticated API', () => {
       (
         await ctx.app.inject({
           method: 'POST',
-          url: '/api/cmd',
+          url: '/api/rooms/kos-01/cmd',
           headers: { cookie },
           payload: { mode: 1, fan: 1 },
         })
       ).statusCode,
     ).toBe(202);
-    expect(publish).toHaveBeenCalledExactlyOnceWith({ mode: 1, fan: 1 });
+    expect(publish).toHaveBeenCalledExactlyOnceWith('kos-01', {
+      mode: 1,
+      fan: 1,
+    });
     publish.mockRejectedValue(new Error('offline'));
     expect(
       (
         await ctx.app.inject({
           method: 'POST',
-          url: '/api/cmd',
+          url: '/api/rooms/kos-01/cmd',
           headers: { cookie },
           payload: { mute: 1 },
         })
@@ -112,7 +122,7 @@ describe('authenticated API', () => {
     expect(
       (
         await ctx.app.inject({
-          url: '/api/history?from=bad&to=bad&bucket=1m',
+          url: '/api/rooms/kos-01/history?from=bad&to=bad&bucket=1m',
           headers: { cookie },
         })
       ).statusCode,
@@ -120,7 +130,7 @@ describe('authenticated API', () => {
     expect(
       (
         await ctx.app.inject({
-          url: '/api/events?limit=999999',
+          url: '/api/rooms/kos-01/events?limit=999999',
           headers: { cookie },
         })
       ).statusCode,
@@ -129,13 +139,166 @@ describe('authenticated API', () => {
       (
         await ctx.app.inject({
           method: 'POST',
-          url: '/api/cmd',
+          url: '/api/rooms/kos-01/cmd',
           headers: { cookie, origin: 'https://evil.example' },
           payload: { mode: 1 },
         })
       ).statusCode,
     ).toBe(403);
     publish.mockRestore();
+  });
+  it('manages rooms, validates names and identities, and deletes only the selected device data', async () => {
+    const call = (
+      method: 'GET' | 'POST' | 'PATCH' | 'DELETE',
+      url: string,
+      payload?: object,
+    ) =>
+      ctx.app.inject({
+        method,
+        url,
+        headers: { cookie },
+        ...(payload ? { payload } : {}),
+      });
+    const list = (await call('GET', '/api/rooms')).json();
+    expect(list.rooms).toEqual([
+      {
+        deviceId: 'kos-01',
+        name: 'Kamar 1',
+        createdAt: expect.any(String),
+        online: false,
+        state: null,
+        telemetry: null,
+        updatedAt: null,
+      },
+    ]);
+    expect(list.unregistered).toEqual([]);
+    for (const payload of [
+      { deviceId: 'Bad_ID', name: 'Kamar 2' },
+      { deviceId: '-bad', name: 'Kamar 2' },
+      { deviceId: 'a'.repeat(33), name: 'Kamar 2' },
+      { deviceId: 'kamar-02', name: '  ' },
+      { deviceId: 'kamar-02', name: 'x'.repeat(41) },
+      { deviceId: 'kamar-02', name: 'Valid', extra: 1 },
+    ])
+      expect((await call('POST', '/api/rooms', payload)).statusCode).toBe(400);
+    ctx.bridge.ingest('simondara/kamar-02/online', '1');
+    ctx.bridge.ingest(
+      'simondara/kamar-02/telemetry',
+      JSON.stringify({ t: 27, h: 50, ppm: 650 }),
+    );
+    ctx.bridge.ingest(
+      'simondara/kamar-02/state',
+      JSON.stringify({
+        status: 0,
+        fan: 0,
+        mode: 0,
+        led: 1,
+        buzzer: 0,
+        mute: 0,
+      }),
+    );
+    expect((await call('GET', '/api/rooms')).json().unregistered).toEqual([
+      { deviceId: 'kamar-02', lastSeen: expect.any(String), online: true },
+    ]);
+    const created = await call('POST', '/api/rooms', {
+      deviceId: 'kamar-02',
+      name: '  Kamar 2  ',
+    });
+    expect(created.statusCode).toBe(201);
+    expect(created.json()).toMatchObject({
+      deviceId: 'kamar-02',
+      name: 'Kamar 2',
+      online: true,
+      telemetry: { ppm: 650 },
+      state: { fault: 0 },
+    });
+    expect((await call('GET', '/api/rooms')).json().unregistered).toEqual([]);
+    expect(
+      (
+        await call('POST', '/api/rooms', {
+          deviceId: 'kamar-02',
+          name: 'Other',
+        })
+      ).json(),
+    ).toEqual({ error: 'device_exists' });
+    const duplicate = await call('POST', '/api/rooms', {
+      deviceId: 'kamar-03',
+      name: 'kAMAR 2',
+    });
+    expect(duplicate.statusCode).toBe(409);
+    expect(duplicate.json()).toEqual({ error: 'name_exists' });
+    const conflict = await call('PATCH', '/api/rooms/kamar-02', {
+      name: 'KAMAR 1',
+    });
+    expect(conflict.statusCode).toBe(409);
+    expect(conflict.json()).toEqual({ error: 'name_exists' });
+    expect(
+      (await call('PATCH', '/api/rooms/kamar-02', { name: '' })).statusCode,
+    ).toBe(400);
+    const renamed = await call('PATCH', '/api/rooms/kamar-02', {
+      name: 'Atas',
+    });
+    expect(renamed.statusCode).toBe(200);
+    expect(renamed.json()).toMatchObject({
+      name: 'Atas',
+      createdAt: created.json().createdAt,
+    });
+    for (const [method, suffix] of [
+      ['GET', '/state'],
+      ['GET', '/history'],
+      ['GET', '/events'],
+      ['POST', '/cmd'],
+      ['PATCH', ''],
+      ['DELETE', ''],
+    ] as const) {
+      const missing = await call(
+        method,
+        `/api/rooms/missing${suffix}`,
+        method === 'POST' ? { fan: 1 } : undefined,
+      );
+      expect(missing.statusCode).toBe(404);
+      expect(missing.json()).toEqual({ error: 'room_not_found' });
+    }
+    expect(
+      (await call('GET', '/api/rooms/kamar-02/state')).json(),
+    ).toMatchObject({
+      online: true,
+      telemetry: { ppm: 650 },
+      state: { fault: 0 },
+    });
+    ctx.bridge.ingest(
+      'simondara/kamar-02/state',
+      JSON.stringify({
+        status: 0,
+        fan: 0,
+        mode: 0,
+        led: 1,
+        buzzer: 0,
+        mute: 0,
+        fault: 5,
+      }),
+    );
+    expect(
+      (await call('GET', '/api/rooms/kamar-02/state')).json().state.fault,
+    ).toBe(5);
+    expect((await call('GET', '/api/rooms')).json().rooms[1].state.fault).toBe(
+      5,
+    );
+    expect(
+      (await call('GET', '/api/rooms/kamar-02/events')).json().events,
+    ).toHaveLength(2);
+    expect((await call('DELETE', '/api/rooms/kamar-02')).statusCode).toBe(204);
+    for (const table of ['rooms', 'snapshot', 'telemetry', 'events'])
+      expect(
+        ctx.store.db
+          .prepare(`SELECT COUNT(*) AS n FROM ${table} WHERE device_id=?`)
+          .get('kamar-02'),
+      ).toEqual({ n: 0 });
+    expect((await call('GET', '/api/rooms/kos-01/state')).statusCode).toBe(200);
+    for (const old of ['state', 'history', 'events', 'cmd'])
+      expect(
+        (await call(old === 'cmd' ? 'POST' : 'GET', `/api/${old}`)).statusCode,
+      ).toBe(404);
   });
   it('revokes sessions on logout and enforces expiration server-side', async () => {
     expect(
@@ -148,8 +311,12 @@ describe('authenticated API', () => {
       ).statusCode,
     ).toBe(204);
     expect(
-      (await ctx.app.inject({ url: '/api/state', headers: { cookie } }))
-        .statusCode,
+      (
+        await ctx.app.inject({
+          url: '/api/rooms/kos-01/state',
+          headers: { cookie },
+        })
+      ).statusCode,
     ).toBe(401);
     const login = await ctx.app.inject({
       method: 'POST',
@@ -159,8 +326,12 @@ describe('authenticated API', () => {
     cookie = (login.headers['set-cookie'] as string).split(';')[0]!;
     ctx.store.db.prepare('UPDATE sessions SET expires=0').run();
     expect(
-      (await ctx.app.inject({ url: '/api/state', headers: { cookie } }))
-        .statusCode,
+      (
+        await ctx.app.inject({
+          url: '/api/rooms/kos-01/state',
+          headers: { cookie },
+        })
+      ).statusCode,
     ).toBe(401);
   });
   it('rate limits password guessing', async () => {

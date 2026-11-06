@@ -26,9 +26,15 @@ it('streams contract snapshots and updates, removes disconnected listeners, and 
     { connectMqtt: false, logger: false },
   );
   const address = await ctx.app.listen({ port: 0, host: '127.0.0.1' });
-  ctx.bridge.ingest('telemetry', JSON.stringify({ t: 27, h: 52, ppm: 650 }));
-  ctx.bridge.ingest('state', JSON.stringify(initialState));
-  ctx.bridge.ingest('online', '1');
+  ctx.bridge.ingest(
+    'simondara/kos-01/telemetry',
+    JSON.stringify({ t: 27, h: 52, ppm: 650 }),
+  );
+  ctx.bridge.ingest(
+    'simondara/kos-01/state',
+    JSON.stringify({ ...initialState, fault: 5 }),
+  );
+  ctx.bridge.ingest('simondara/kos-01/online', '1');
   const login = await ctx.app.inject({
     method: 'POST',
     url: '/api/auth/login',
@@ -55,11 +61,63 @@ it('streams contract snapshots and updates, removes disconnected listeners, and 
   };
   await waitFor(() => data.includes('event: telemetry'));
   expect(response.headers['content-type']).toBe('text/event-stream');
-  expect(data).toContain(`event: state\ndata: ${JSON.stringify(initialState)}`);
-  expect(data).toContain('event: online\ndata: {"online":true}');
+  expect(data.startsWith('event: rooms\n')).toBe(true);
+  expect(data).toContain(
+    `event: state\ndata: ${JSON.stringify({ ...initialState, fault: 5, deviceId: 'kos-01' })}`,
+  );
+  expect(data).toContain(
+    'event: online\ndata: {"deviceId":"kos-01","online":true}',
+  );
   expect(ctx.bridge.events.listenerCount('update')).toBe(1);
-  ctx.bridge.ingest('online', '0');
+  ctx.bridge.ingest('simondara/kos-01/state', JSON.stringify(initialState));
+  await waitFor(() =>
+    data.includes(
+      `event: state\ndata: ${JSON.stringify({ ...initialState, deviceId: 'kos-01' })}`,
+    ),
+  );
+  ctx.bridge.ingest('simondara/kos-01/online', '0');
   await waitFor(() => data.includes('"online":false'));
+  ctx.bridge.ingest(
+    'simondara/new-device/telemetry',
+    JSON.stringify({ t: 28, h: 51, ppm: 777 }),
+  );
+  await waitFor(() =>
+    data.includes('"unregistered":[{"deviceId":"new-device"'),
+  );
+  expect(data).not.toContain('"ppm":777');
+  expect(data).not.toContain(
+    'event: telemetry\ndata: {"deviceId":"new-device"',
+  );
+  const room = await ctx.app.inject({
+    method: 'POST',
+    url: '/api/rooms',
+    headers: { cookie },
+    payload: { deviceId: 'new-device', name: 'Kamar 2' },
+  });
+  expect(room.statusCode).toBe(201);
+  await waitFor(() => data.includes('"name":"Kamar 2"'));
+  ctx.bridge.ingest(
+    'simondara/new-device/telemetry',
+    JSON.stringify({ t: 29, h: 51, ppm: 888 }),
+  );
+  await waitFor(() => data.includes('"ppm":888'));
+  expect(data).toContain('"deviceId":"new-device"');
+  const removed = await ctx.app.inject({
+    method: 'DELETE',
+    url: '/api/rooms/new-device',
+    headers: { cookie },
+  });
+  expect(removed.statusCode).toBe(204);
+  await waitFor(() => data.endsWith('"unregistered":[]}\n\n'));
+  data = '';
+  ctx.bridge.ingest(
+    'simondara/new-device/telemetry',
+    JSON.stringify({ t: 28, h: 51, ppm: 999 }),
+  );
+  await waitFor(() =>
+    data.includes('"unregistered":[{"deviceId":"new-device"'),
+  );
+  expect(data).not.toContain('"ppm":999');
   response.destroy();
   await waitFor(() => ctx!.bridge.events.listenerCount('update') === 0);
   const second = await connect();

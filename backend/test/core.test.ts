@@ -7,13 +7,14 @@ import {
   commandSchema,
   historySchema,
   onlineSchema,
+  snapshotSchema,
   stateSchema,
   telemetrySchema,
   type Snapshot,
 } from '../src/schemas.js';
 import { Store } from '../src/store.js';
 import { Bridge } from '../src/bridge.js';
-import { Notifications } from '../src/telegram.js';
+import { Notifications, statusText } from '../src/telegram.js';
 import { initialState, statusFor, Simulator } from '../src/sim/logic.js';
 import { loadConfig } from '../src/config.js';
 
@@ -56,6 +57,8 @@ describe('trust boundary validation', () => {
     for (const payload of [
       {},
       { status: 1 },
+      { fault: 1 },
+      { mode: 1, fault: 0 },
       { mode: '1' },
       { fan: true },
       { fan: 2 },
@@ -64,6 +67,17 @@ describe('trust boundary validation', () => {
       { mute: null },
     ])
       expect(commandSchema.safeParse(payload).success).toBe(false);
+  });
+  it('defaults legacy state and snapshots to fault 0 and accepts only valid fault bitmasks', () => {
+    const legacy = { status: 0, fan: 0, mode: 0, led: 1, buzzer: 0, mute: 0 };
+    expect(stateSchema.parse(legacy)).toEqual({ ...legacy, fault: 0 });
+    expect(
+      snapshotSchema.parse({ ...snapshot(), state: legacy }).state?.fault,
+    ).toBe(0);
+    for (let fault = 0; fault <= 7; fault++)
+      expect(stateSchema.parse({ ...legacy, fault }).fault).toBe(fault);
+    for (const fault of [-1, 8, 1.5, '1', null])
+      expect(stateSchema.safeParse({ ...legacy, fault }).success).toBe(false);
   });
   it('fails config startup with field names but without leaking values', () => {
     expect(() => loadConfig({ SESSION_SECRET: 'private-value' })).toThrow(
@@ -104,7 +118,7 @@ describe('SQLite history, retention and MQTT recovery', () => {
         [2000, 24],
         [2 * size, 99],
       ]) {
-        store.telemetry({
+        store.telemetry('kos-01', {
           at: new Date(start + offset!).toISOString(),
           t: t!,
           h: 50,
@@ -112,6 +126,7 @@ describe('SQLite history, retention and MQTT recovery', () => {
         });
       }
       const points = store.history(
+        'kos-01',
         new Date(start).toISOString(),
         new Date(start + 2 * size).toISOString(),
         bucket,
@@ -134,22 +149,32 @@ describe('SQLite history, retention and MQTT recovery', () => {
     const bridge = new Bridge(store, pino({ enabled: false }));
     const listener = vi.fn();
     bridge.events.on('update', listener);
-    bridge.ingest('telemetry', 'broken');
-    bridge.ingest('state', '{}');
-    bridge.ingest('online', 'true');
+    bridge.ingest('simondara/kos-01/telemetry', 'broken');
+    bridge.ingest('simondara/kos-01/state', '{}');
+    bridge.ingest('simondara/kos-01/online', 'true');
     expect(listener).not.toHaveBeenCalled();
-    bridge.ingest('telemetry', JSON.stringify({ ...normal, ts: 0 }));
-    bridge.ingest('state', JSON.stringify(initialState));
-    bridge.ingest('state', JSON.stringify(initialState));
-    bridge.ingest('online', '1');
-    bridge.ingest('online', '1');
-    expect(store.events(50)).toHaveLength(2);
-    const expected = structuredClone(bridge.snapshot);
+    bridge.ingest(
+      'simondara/kos-01/telemetry',
+      JSON.stringify({ ...normal, ts: 0 }),
+    );
+    bridge.ingest(
+      'simondara/kos-01/state',
+      JSON.stringify({ ...initialState, fault: 7 }),
+    );
+    bridge.ingest(
+      'simondara/kos-01/state',
+      JSON.stringify({ ...initialState, fault: 7 }),
+    );
+    bridge.ingest('simondara/kos-01/online', '1');
+    bridge.ingest('simondara/kos-01/online', '1');
+    expect(store.events('kos-01', 50)).toHaveLength(2);
+    const expected = structuredClone(bridge.snapshot('kos-01'));
     store.close();
     store = new Store(path);
     cleanup.push(() => store.close());
-    expect(store.restore()).toEqual(expected);
-    store.telemetry({ ...normal, at: '2020-01-01T00:00:00Z' });
+    expect(store.restore('kos-01')).toEqual(expected);
+    expect(store.room('kos-01')?.state?.fault).toBe(7);
+    store.telemetry('kos-01', { ...normal, at: '2020-01-01T00:00:00Z' });
     store.prune();
     expect(
       store.db.prepare('SELECT COUNT(*) AS n FROM telemetry').get(),
@@ -158,6 +183,57 @@ describe('SQLite history, retention and MQTT recovery', () => {
 });
 
 describe('Telegram transitions', () => {
+  it('reports each changed fault bit once, including partial recovery while other faults remain', () => {
+    const current = snapshot();
+    current.state!.fault = 1;
+    const tracker = new Notifications(current);
+    expect(tracker.update(current)).toEqual([]);
+    current.state!.fault = 7;
+    expect(tracker.update(current)).toEqual([
+      'Gangguan Sensor gas (MQ-135)',
+      'Gangguan Layar LCD',
+    ]);
+    expect(tracker.update(current)).toEqual([]);
+    current.state!.fault = 2;
+    expect(tracker.update(current)).toEqual([
+      'Sensor suhu/kelembapan (DHT11) normal kembali',
+      'Layar LCD normal kembali',
+    ]);
+    current.state!.fault = 1;
+    expect(tracker.update(current)).toEqual([
+      'Gangguan Sensor suhu/kelembapan (DHT11)',
+      'Sensor gas (MQ-135) normal kembali',
+    ]);
+    current.state!.fault = 0;
+    expect(tracker.update(current)).toEqual([
+      'Sensor suhu/kelembapan (DHT11) normal kembali',
+    ]);
+    expect(tracker.update(current)).toEqual([]);
+  });
+  it('includes only active faults in status text', () => {
+    const current = snapshot();
+    expect(statusText(current)).not.toContain('Gangguan');
+    current.state!.fault = 5;
+    expect(statusText(current)).toContain(
+      'Gangguan: Sensor suhu/kelembapan (DHT11), Layar LCD.',
+    );
+    expect(statusText(current)).not.toContain('MQ-135');
+  });
+  it('ignores existing offline snapshots until an online-to-offline transition is observed', () => {
+    const current = snapshot();
+    current.online = false;
+    current.updatedAt = new Date(0).toISOString();
+    const tracker = new Notifications(current);
+    expect(tracker.update(current, 120_000)).toEqual([]);
+    current.updatedAt = new Date(180_000).toISOString();
+    expect(tracker.update(current, 300_000)).toEqual([]);
+    current.online = true;
+    expect(tracker.update(current, 310_000)).toEqual([]);
+    current.online = false;
+    expect(tracker.update(current, 320_000)).toEqual([]);
+    expect(tracker.update(current, 379_999)).toEqual([]);
+    expect(tracker.update(current, 380_000)[0]).toContain('offline');
+  });
   it('alerts danger and normal only after a danger episode, including recovery through warning', () => {
     const current = snapshot();
     const tracker = new Notifications(current);
