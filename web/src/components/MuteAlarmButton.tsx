@@ -1,11 +1,11 @@
 import { useRef, useState } from 'react';
 import { BellOff } from 'lucide-react';
-import { useLive } from '../live/context';
+import { useRoom } from '../live/context';
 import { Button } from './ui/Button';
 import styles from './MuteAlarmButton.module.css';
 
 export function MuteAlarmButton() {
-  const { state, online, connection, sendCommand } = useLive();
+  const { state, online, connection, sendCommand } = useRoom();
   const [result, setResult] = useState<
     'idle' | 'loading' | 'success' | 'error'
   >('idle');

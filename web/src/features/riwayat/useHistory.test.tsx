@@ -20,16 +20,17 @@ describe('request riwayat', () => {
         points: [{ at: '2026-10-31T10:00:00Z', t: 25, h: 50, ppm: 800 }],
       });
     const { result, rerender, unmount } = renderHook(
-      ({ range }: { range: HistoryRange }) => useHistory(range),
+      ({ range }: { range: HistoryRange }) => useHistory('kos-01', range),
       { initialProps: { range: '1h' as HistoryRange } },
     );
-    const firstSignal = request.mock.calls[0]![3]!;
+    expect(request.mock.calls[0]![0]).toBe('kos-01');
+    const firstSignal = request.mock.calls[0]![4]!;
     rerender({ range: '7d' });
     expect(firstSignal.aborted).toBe(true);
     await waitFor(() => expect(result.current.points).toHaveLength(1));
     await act(async () => finish({ points: [] }));
     expect(result.current.points).toHaveLength(1);
-    const latestSignal = request.mock.calls[1]![3]!;
+    const latestSignal = request.mock.calls[1]![4]!;
     unmount();
     expect(latestSignal.aborted).toBe(true);
   });
@@ -38,7 +39,7 @@ describe('request riwayat', () => {
       .spyOn(api, 'events')
       .mockRejectedValueOnce(new Error('Server tidak tersedia'))
       .mockResolvedValue({ events: [] });
-    const { result, unmount } = renderHook(() => useEvents('24h'));
+    const { result, unmount } = renderHook(() => useEvents('kos-01', '24h'));
     await waitFor(() =>
       expect(result.current.error).toBe('Server tidak tersedia'),
     );
@@ -46,7 +47,7 @@ describe('request riwayat', () => {
     await waitFor(() => expect(result.current.loading).toBe(false));
     expect(result.current.error).toBeNull();
     expect(result.current.events).toEqual([]);
-    const signal = request.mock.calls[1]![1]!;
+    const signal = request.mock.calls[1]![2]!;
     unmount();
     expect(signal.aborted).toBe(true);
   });

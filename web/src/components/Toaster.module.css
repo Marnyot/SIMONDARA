@@ -1,0 +1,100 @@
+/* Sits below the thin connection banner so both stay readable during an outage. */
+.region {
+  position: fixed;
+  top: calc(36px + env(safe-area-inset-top));
+  right: var(--space-4);
+  z-index: 40;
+  display: grid;
+  gap: var(--space-2);
+  width: min(100% - var(--space-8), 400px);
+  pointer-events: none;
+}
+.toast {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-3) var(--space-3) var(--space-4);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-control);
+  color: var(--color-heading);
+  background: var(--color-surface);
+  box-shadow: 0 8px 24px #12352b2e;
+  font-size: var(--font-size-body);
+  pointer-events: auto;
+  animation: enter 240ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+.toast p {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  padding-block: 2px;
+}
+.icon {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+.toast[data-kind='danger'] {
+  border-color: var(--color-danger);
+  color: var(--color-danger-text);
+  background: var(--color-danger-soft);
+  font-weight: 600;
+}
+.toast[data-kind='safe'] {
+  border-color: var(--color-safe);
+  color: var(--color-safe-text);
+  background: var(--color-safe-soft);
+}
+.toast[data-kind='fault'] {
+  border-color: var(--color-warning);
+  color: var(--color-warning-text);
+  background: var(--color-warning-soft);
+}
+.toast[data-kind='faultCleared'] {
+  border-color: var(--color-safe);
+}
+.toast[data-kind='faultCleared'] .icon {
+  color: var(--color-safe-text);
+}
+.toast[data-kind='offline'] {
+  border-color: var(--color-danger);
+}
+.toast[data-kind='offline'] .icon {
+  color: var(--color-danger-text);
+}
+.toast[data-kind='online'] .icon {
+  color: var(--color-safe-text);
+}
+.toast[data-kind='newDevice'] .icon {
+  color: var(--color-primary);
+}
+.toast a {
+  flex-shrink: 0;
+  min-height: 36px;
+  padding: 6px 12px;
+}
+.close {
+  display: inline-grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: 8px;
+  color: inherit;
+  background: transparent;
+  cursor: pointer;
+}
+.close:hover {
+  background: #12352b14;
+}
+@keyframes enter {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .toast {
+    animation: none;
+  }
+}

@@ -7,7 +7,8 @@ import { ErrorState } from '../components/ui/ErrorState';
 import { Skeleton } from '../components/ui/Skeleton';
 import { SegmentedControl } from '../components/ui/SegmentedControl';
 import { StatusDot } from '../components/ui/StatusDot';
-import { useLive } from '../live/context';
+import { useRoom } from '../live/context';
+import { unreliableReadings } from '../live/status';
 import {
   describeEvent,
   formatDateTime,
@@ -30,13 +31,18 @@ const metrics = [
 export default function Riwayat() {
   const [query, setQuery] = useSearchParams();
   const range = parseRange(query.get('range'));
-  const { telemetry, online } = useLive();
-  const history = useHistory(range);
-  const events = useEvents(range);
+  const { deviceId, name, telemetry, online, state } = useRoom();
+  const unreliable = unreliableReadings(state);
+  const history = useHistory(deviceId, range);
+  const events = useEvents(deviceId, range);
   return (
     <>
       <div className={styles.toolbar}>
-        <PageHeader title="Riwayat Data" subtitle="Tren sensor dari cloud" />
+        <PageHeader
+          title={name}
+          subtitle="Riwayat tren sensor dari cloud"
+          online={online}
+        />
         <div className={styles.range}>
           <SegmentedControl
             label="Rentang waktu riwayat"
@@ -62,7 +68,7 @@ export default function Riwayat() {
               <h2>{label}</h2>
               <span>
                 {telemetry
-                  ? `${online ? 'Sekarang' : 'Terakhir'} ${formatNumber(telemetry[key], key === 'ppm' ? 0 : 1)} ${unit}`
+                  ? `${online ? 'Sekarang' : 'Terakhir'} ${formatNumber(telemetry[key], key === 'ppm' ? 0 : 1)} ${unit}${unreliable[key] ? ' (tidak andal)' : ''}`
                   : 'Belum ada data langsung'}
               </span>
             </div>

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { ApiError } from '../../api/client';
 import type { Command, DeviceState } from '../../api/types';
 
-export type CommandField = Exclude<keyof DeviceState, 'status'>;
+export type CommandField = Exclude<keyof DeviceState, 'status' | 'fault'>;
 export type CommandValues = Pick<DeviceState, CommandField>;
 
 /** How long to wait for the device to echo a command through SSE `state`. */

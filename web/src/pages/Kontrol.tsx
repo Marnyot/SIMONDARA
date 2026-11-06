@@ -2,8 +2,6 @@ import { X } from 'lucide-react';
 import { PageHeader } from '../components/PageHeader';
 import { Card } from '../components/ui/Card';
 import { EmptyState } from '../components/ui/EmptyState';
-import { ErrorState } from '../components/ui/ErrorState';
-import { Skeleton } from '../components/ui/Skeleton';
 import {
   LedCard,
   MANUAL_HINT,
@@ -13,59 +11,16 @@ import {
 } from '../features/kontrol/ControlCards';
 import { ConnectionCard, LcdCard } from '../features/kontrol/StatusCards';
 import { useDeviceCommands } from '../features/kontrol/useDeviceCommands';
-import { useLive } from '../live/context';
+import { useRoom } from '../live/context';
 import styles from './Kontrol.module.css';
 
-function LoadingLayout() {
-  return (
-    <div className={styles.grid} aria-busy="true">
-      <div className={styles.column}>
-        {[64, 132, 64, 64].map((height, index) => (
-          <Card key={index}>
-            <Skeleton height={height} label="Memuat kontrol perangkat" />
-          </Card>
-        ))}
-      </div>
-      <div className={styles.column}>
-        <Card>
-          <Skeleton height={120} label="Memuat tampilan LCD" />
-        </Card>
-        <Card>
-          <Skeleton height={140} label="Memuat status koneksi" />
-        </Card>
-      </div>
-    </div>
-  );
-}
-
 export default function Kontrol() {
-  const live = useLive();
-  const { state, telemetry, online, connection, updatedAt } = live;
+  const { name, state, telemetry, online, connection, updatedAt, sendCommand } =
+    useRoom();
   const { values, pending, error, send, dismissError } = useDeviceCommands(
     state,
-    live.sendCommand,
+    sendCommand,
   );
-
-  const header = (
-    <PageHeader
-      title="Kontrol Perangkat"
-      subtitle="Kirim perintah ke NodeMCU dari jarak jauh"
-    />
-  );
-
-  if (!live.ready)
-    return (
-      <>
-        {header}
-        {live.error ? (
-          <Card>
-            <ErrorState message={live.error} onRetry={live.retry} />
-          </Card>
-        ) : (
-          <LoadingLayout />
-        )}
-      </>
-    );
 
   const serverReady = connection === 'connected';
   const offline = !online || !serverReady;
@@ -86,7 +41,11 @@ export default function Kontrol() {
 
   return (
     <>
-      {header}
+      <PageHeader
+        title={name}
+        subtitle="Kirim perintah ke NodeMCU dari jarak jauh"
+        online={online}
+      />
       {offline ? (
         <p className={styles.banner} role="status">
           {!online
@@ -159,11 +118,13 @@ export default function Kontrol() {
             telemetry={telemetry}
             status={state?.status ?? null}
             online={online}
+            lcdFault={((state?.fault ?? 0) & 4) !== 0}
           />
           <ConnectionCard
             online={online}
             connection={connection}
             updatedAt={updatedAt}
+            fault={state?.fault ?? null}
           />
         </div>
       </div>

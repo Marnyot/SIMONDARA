@@ -41,7 +41,7 @@ describe('sesi dan route guard', () => {
     );
     const listener = vi.fn();
     window.addEventListener(UNAUTHORIZED_EVENT, listener);
-    await expect(request('/state')).rejects.toBeInstanceOf(ApiError);
+    await expect(request('/rooms')).rejects.toBeInstanceOf(ApiError);
     expect(listener).toHaveBeenCalledOnce();
     window.removeEventListener(UNAUTHORIZED_EVENT, listener);
   });

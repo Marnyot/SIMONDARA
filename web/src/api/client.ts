@@ -3,15 +3,21 @@ import {
   commandSchema,
   eventSchema,
   historyPointSchema,
+  roomSchema,
+  roomsPayloadSchema,
   snapshotSchema,
 } from './types';
 import type { Command, HistoryBucket } from './types';
 export const UNAUTHORIZED_EVENT = 'simondara:unauthorized';
+const errorBodySchema = z.object({ error: z.string() });
+const roomPath = (deviceId: string) => `/rooms/${encodeURIComponent(deviceId)}`;
 export class ApiError extends Error {
   constructor(
     public status: number,
     message: string,
     public cause?: unknown,
+    /** Machine-readable `error` from the response body, e.g. `name_exists`. */
+    public code?: string,
   ) {
     super(message);
     this.name = 'ApiError';
@@ -46,11 +52,14 @@ export async function request<T>(
   if (!response.ok) {
     if (response.status === 401 && path !== '/auth/login')
       window.dispatchEvent(new Event(UNAUTHORIZED_EVENT));
+    const body: unknown = await response.json().catch(() => null);
     throw new ApiError(
       response.status,
       response.status === 401
         ? 'Sesi berakhir atau kata sandi salah. Silakan masuk kembali.'
         : `Permintaan gagal (${response.status}). Silakan coba lagi.`,
+      undefined,
+      errorBodySchema.safeParse(body).data?.error,
     );
   }
   if (response.status === 204 || response.status === 202) return undefined as T;
@@ -74,9 +83,26 @@ export const api = {
       body: JSON.stringify({ password }),
     }),
   logout: () => request<void>('/auth/logout', { method: 'POST' }),
-  snapshot: (signal?: AbortSignal) =>
-    request('/state', { signal }, snapshotSchema),
+  rooms: (signal?: AbortSignal) =>
+    request('/rooms', { signal }, roomsPayloadSchema),
+  createRoom: (input: { deviceId: string; name: string }) =>
+    request(
+      '/rooms',
+      { method: 'POST', body: JSON.stringify(input) },
+      roomSchema,
+    ),
+  renameRoom: (deviceId: string, name: string) =>
+    request(
+      roomPath(deviceId),
+      { method: 'PATCH', body: JSON.stringify({ name }) },
+      roomSchema,
+    ),
+  deleteRoom: (deviceId: string) =>
+    request<void>(roomPath(deviceId), { method: 'DELETE' }),
+  roomState: (deviceId: string, signal?: AbortSignal) =>
+    request(`${roomPath(deviceId)}/state`, { signal }, snapshotSchema),
   history: (
+    deviceId: string,
     from: string,
     to: string,
     bucket: HistoryBucket,
@@ -84,20 +110,20 @@ export const api = {
   ) => {
     const query = new URLSearchParams({ from, to, bucket });
     return request(
-      `/history?${query}`,
+      `${roomPath(deviceId)}/history?${query}`,
       { signal },
       z.object({ points: z.array(historyPointSchema) }),
     );
   },
-  events: (limit = 50, signal?: AbortSignal) =>
+  events: (deviceId: string, limit = 50, signal?: AbortSignal) =>
     request(
-      `/events?limit=${Math.min(100, Math.max(1, Math.trunc(limit)))}`,
+      `${roomPath(deviceId)}/events?limit=${Math.min(100, Math.max(1, Math.trunc(limit)))}`,
       { signal },
       z.object({ events: z.array(eventSchema) }),
     ),
 };
-export function sendCommand(command: Command) {
-  return request<void>('/cmd', {
+export function sendCommand(deviceId: string, command: Command) {
+  return request<void>(`${roomPath(deviceId)}/cmd`, {
     method: 'POST',
     body: JSON.stringify(commandSchema.parse(command)),
   });

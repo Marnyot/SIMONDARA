@@ -1,0 +1,16 @@
+.back {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 44px;
+  margin: -10px 0 var(--space-1) -4px;
+  padding: 0 var(--space-1);
+  border-radius: 8px;
+  color: var(--color-primary);
+  font-size: var(--font-size-body);
+  font-weight: 600;
+  text-decoration: none;
+}
+.back:hover {
+  text-decoration: underline;
+}
