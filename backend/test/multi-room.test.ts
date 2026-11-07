@@ -72,12 +72,12 @@ function legacyDb() {
   return { db, path };
 }
 
-describe('schema v2 migration', () => {
+describe('schema v3 migration', () => {
   it('preserves v1 history, events, snapshot and sessions, seeds the configured room once and reopens idempotently', () => {
     const legacy = legacyDb();
     legacy.db.close();
     let store = new Store(legacy.path, 'migrated-01');
-    expect(store.db.pragma('user_version', { simple: true })).toBe(2);
+    expect(store.db.pragma('user_version', { simple: true })).toBe(3);
     expect(store.room('migrated-01')).toMatchObject({
       name: 'Kamar 1',
       ...oldSnapshot,

@@ -13,7 +13,6 @@ import { Telegram } from './telegram.js';
 import {
   commandSchema,
   createRoomSchema,
-  updateRoomSchema,
   eventsQuerySchema,
   historySchema,
 } from './schemas.js';
@@ -141,6 +140,10 @@ export async function buildApp(
       return reply.clearCookie('session', cookieOptions).code(204).send();
     });
     protectedApp.get('/api/auth/me', async () => ({ user: 'pengelola' }));
+    protectedApp.get('/api/notifications', async () => store.notifications());
+    protectedApp.patch('/api/notifications', async (request) =>
+      bridge.updateNotifications(request.body),
+    );
     protectedApp.get('/api/rooms', async () => store.roomList());
     protectedApp.post('/api/rooms', async (request, reply) => {
       const { deviceId, name } = createRoomSchema.parse(request.body);
@@ -157,10 +160,7 @@ export async function buildApp(
       roomApp.patch<{ Params: { deviceId: string } }>(
         '/api/rooms/:deviceId',
         async (request) => {
-          const { name } = updateRoomSchema.parse(request.body);
-          const room = store.renameRoom(request.params.deviceId, name);
-          bridge.roomsChanged();
-          return room;
+          return bridge.updateRoom(request.params.deviceId, request.body);
         },
       );
       roomApp.delete<{ Params: { deviceId: string } }>(
@@ -243,6 +243,7 @@ export async function buildApp(
         send('online', { deviceId, online: room.online });
         send('telemetry', { ...room.telemetry, deviceId });
       }
+      send('notifications', store.notifications());
       bridge.events.on('update', send);
       const heartbeat = setInterval(() => {
         if (

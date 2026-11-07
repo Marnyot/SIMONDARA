@@ -60,6 +60,15 @@ it('streams contract snapshots and updates, removes disconnected listeners, and 
     throw new Error('Stream expectation timed out');
   };
   await waitFor(() => data.includes('event: telemetry'));
+  expect(data).toContain(
+    'event: notifications\ndata: {"enabled":true,"snoozedUntil":null}',
+  );
+  ctx.bridge.updateNotifications({ enabled: false });
+  await waitFor(() =>
+    data.includes('event: notifications\ndata: {"enabled":false'),
+  );
+  ctx.bridge.updateRoom('kos-01', { notify: false });
+  await waitFor(() => data.includes('"notify":false'));
   expect(response.headers['content-type']).toBe('text/event-stream');
   expect(data.startsWith('event: rooms\n')).toBe(true);
   expect(data).toContain(

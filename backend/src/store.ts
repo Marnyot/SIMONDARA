@@ -4,11 +4,17 @@ import { dirname } from 'node:path';
 import {
   snapshotSchema,
   type Room,
+  type NotificationSettings,
   type Snapshot,
   type TelemetryPoint,
 } from './schemas.js';
 
-type RoomRow = { deviceId: string; name: string; createdAt: string };
+type RoomRow = {
+  deviceId: string;
+  name: string;
+  createdAt: string;
+  notify: number;
+};
 export class RoomConflict extends Error {
   constructor(readonly code: 'device_exists' | 'name_exists') {
     super(code);
@@ -23,7 +29,7 @@ export class Store {
     this.db.pragma('journal_mode = WAL');
     this.db.pragma('busy_timeout = 5000');
     const version = this.db.pragma('user_version', { simple: true }) as number;
-    if (version > 2) {
+    if (version > 3) {
       this.db.close();
       throw new Error('Versi database lebih baru daripada backend');
     }
@@ -74,7 +80,9 @@ export class Store {
             this.db.exec('DROP TABLE snapshot_v1');
           }
           this.db
-            .prepare('INSERT INTO rooms VALUES (?, ?, ?, ?)')
+            .prepare(
+              'INSERT INTO rooms (device_id,name,name_key,created_at) VALUES (?, ?, ?, ?)',
+            )
             .run(
               initialDeviceId,
               'Kamar 1',
@@ -82,6 +90,15 @@ export class Store {
               new Date().toISOString(),
             );
           this.db.pragma('user_version = 2');
+        })();
+      if (version < 3)
+        this.db.transaction(() => {
+          this.db.exec(`
+            ALTER TABLE rooms ADD COLUMN notify INTEGER NOT NULL DEFAULT 1 CHECK(notify IN (0,1));
+            CREATE TABLE notifications (id INTEGER PRIMARY KEY CHECK(id=1), enabled INTEGER NOT NULL DEFAULT 1 CHECK(enabled IN (0,1)), snoozed_until TEXT);
+            INSERT INTO notifications (id) VALUES (1);
+            PRAGMA user_version=3;
+          `);
         })();
     } catch (error) {
       this.db.close();
@@ -106,10 +123,12 @@ export class Store {
   room(deviceId: string): Room | undefined {
     const row = this.db
       .prepare(
-        'SELECT device_id AS deviceId, name, created_at AS createdAt FROM rooms WHERE device_id=?',
+        'SELECT device_id AS deviceId, name, created_at AS createdAt, notify FROM rooms WHERE device_id=?',
       )
       .get(deviceId) as RoomRow | undefined;
-    return row && { ...row, ...this.restore(deviceId) };
+    return (
+      row && { ...row, notify: Boolean(row.notify), ...this.restore(deviceId) }
+    );
   }
   rooms(): Room[] {
     return (
@@ -145,12 +164,21 @@ export class Store {
       )
         throw new RoomConflict('name_exists');
       this.db
-        .prepare('INSERT INTO rooms VALUES (?, ?, ?, ?)')
+        .prepare(
+          'INSERT INTO rooms (device_id,name,name_key,created_at) VALUES (?, ?, ?, ?)',
+        )
         .run(deviceId, name, name.toLowerCase(), new Date().toISOString());
       return this.room(deviceId)!;
     })();
   }
   renameRoom(deviceId: string, name: string): Room {
+    return this.updateRoom(deviceId, { name });
+  }
+  updateRoom(
+    deviceId: string,
+    patch: { name?: string | undefined; notify?: boolean | undefined },
+  ): Room {
+    const name = patch.name ?? this.room(deviceId)!.name;
     return this.db.transaction(() => {
       if (
         this.db
@@ -161,8 +189,46 @@ export class Store {
       this.db
         .prepare('UPDATE rooms SET name=?, name_key=? WHERE device_id=?')
         .run(name, name.toLowerCase(), deviceId);
+      if (patch.notify !== undefined)
+        this.db
+          .prepare('UPDATE rooms SET notify=? WHERE device_id=?')
+          .run(Number(patch.notify), deviceId);
       return this.room(deviceId)!;
     })();
+  }
+  notifications(now = Date.now()): NotificationSettings {
+    const row = this.db
+      .prepare('SELECT enabled, snoozed_until FROM notifications WHERE id=1')
+      .get() as { enabled: number; snoozed_until: string | null };
+    return {
+      enabled: Boolean(row.enabled),
+      snoozedUntil:
+        row.snoozed_until && Date.parse(row.snoozed_until) > now
+          ? row.snoozed_until
+          : null,
+    };
+  }
+  updateNotifications(patch: {
+    enabled?: boolean | undefined;
+    snoozeMinutes?: number | undefined;
+  }): NotificationSettings {
+    this.db.transaction(() => {
+      if (patch.enabled !== undefined)
+        this.db
+          .prepare('UPDATE notifications SET enabled=? WHERE id=1')
+          .run(Number(patch.enabled));
+      if (patch.snoozeMinutes !== undefined)
+        this.db
+          .prepare('UPDATE notifications SET snoozed_until=? WHERE id=1')
+          .run(
+            patch.snoozeMinutes === 0
+              ? null
+              : new Date(
+                  Date.now() + patch.snoozeMinutes * 60_000,
+                ).toISOString(),
+          );
+    })();
+    return this.notifications();
   }
   deleteRoom(deviceId: string) {
     this.db.transaction(() => {

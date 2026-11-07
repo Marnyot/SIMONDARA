@@ -9,11 +9,14 @@ import {
   stateSchema,
   telemetrySchema,
   type Command,
+  updateNotificationsSchema,
+  updateRoomSchema,
 } from './schemas.js';
 import type { Store } from './store.js';
 
 export class Bridge {
   readonly events = new EventEmitter();
+  private snoozeTimer: ReturnType<typeof setTimeout> | undefined;
   private client: MqttClient | undefined;
   constructor(
     readonly store: Store,
@@ -21,6 +24,7 @@ export class Bridge {
   ) {
     // Each SSE client owns one listener and removes it on close.
     this.events.setMaxListeners(0);
+    this.scheduleSnooze();
   }
   start(config: Config) {
     this.client = mqtt.connect(config.MQTT_URL, {
@@ -53,6 +57,34 @@ export class Bridge {
   }
   snapshot(deviceId: string) {
     return this.store.restore(deviceId);
+  }
+  updateRoom(deviceId: string, patch: unknown) {
+    const room = this.store.updateRoom(deviceId, updateRoomSchema.parse(patch));
+    this.roomsChanged();
+    return room;
+  }
+  updateNotifications(patch: unknown) {
+    const settings = this.store.updateNotifications(
+      updateNotificationsSchema.parse(patch),
+    );
+    this.scheduleSnooze();
+    this.events.emit('update', 'notifications', settings);
+    return settings;
+  }
+  private scheduleSnooze() {
+    if (this.snoozeTimer) clearTimeout(this.snoozeTimer);
+    const { snoozedUntil } = this.store.notifications();
+    if (snoozedUntil) {
+      this.snoozeTimer = setTimeout(
+        () => {
+          // Recheck the clock in case it moved backwards while the timer ran.
+          if (this.store.notifications().snoozedUntil) this.scheduleSnooze();
+          else this.updateNotifications({ snoozeMinutes: 0 });
+        },
+        Math.max(1, Date.parse(snoozedUntil) - Date.now()),
+      );
+      this.snoozeTimer.unref();
+    }
   }
   roomsChanged() {
     this.events.emit('update', 'rooms', this.store.roomList());
@@ -142,6 +174,7 @@ export class Bridge {
     );
   }
   async close() {
+    if (this.snoozeTimer) clearTimeout(this.snoozeTimer);
     if (this.client) await this.client.endAsync(true);
   }
 }
