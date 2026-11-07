@@ -35,7 +35,7 @@ firmware/
 | LED hijau | D0 (GPIO16) | aktif HIGH: D0 → 220 Ω → LED → GND |
 | LED kuning | D7 (GPIO13) | aktif HIGH |
 | LED merah | D3 (GPIO0) | **aktif LOW**: 3V3 → 220 Ω → LED → D3 |
-| Buzzer aktif | D6 (GPIO12) | **aktif LOW** (modul low-level trigger) |
+| Buzzer aktif | D6 (GPIO12) | **aktif LOW** (modul low-level trigger); mati = pin high-Z, lihat troubleshooting |
 | Relay IN | D5 (GPIO14) | modul relay **aktif HIGH** (HIGH = kipas menyala), VCC ke VIN |
 
 Pin dan polaritas di atas mengikuti alat yang sudah diuji tim. D3 (GPIO0) dan D4 (GPIO2) harus HIGH
@@ -195,6 +195,28 @@ Setiap payload `state` memuat `fault`, bitmask gangguan yang terdeteksi (0 = sem
 - Kipas/relay, buzzer, dan LED tidak punya umpan balik sehingga gangguannya tidak dapat dideteksi.
 - Kehilangan catu LCD di antara dua probe (< 5 dtk) tidak terdeteksi: layar tetap kosong sampai
   firmware di-reset.
+
+### Troubleshooting: buzzer tidak bisa dibisukan
+
+Modul buzzer active low yang VCC-nya ke **VIN (5 V)** tidak benar-benar diam bila SIG ditulis HIGH,
+karena HIGH ESP8266 hanya 3,3 V dan transistor modul masih menghantar. Karena itu firmware
+(`BUZZER_OFF_HIGH_Z = true` di `config.h`) mematikan buzzer dengan melepas pin (`pinMode(INPUT)`,
+high-Z) dan menyalakannya dengan menulis LOW lalu `pinMode(OUTPUT)`.
+
+1. Cek VCC modul buzzer: VIN (5 V) atau 3V3. Untuk 5 V, flag harus `true`. Bila modul dicatu 3V3
+   atau dirangkai active high, set `BUZZER_OFF_HIGH_Z = false` (pin kembali ditulis HIGH/LOW biasa).
+2. Saat boot, Serial Monitor harus menampilkan `[act] buzzer mati (high-Z)`.
+3. Kirim `{"mute":1}` saat status Bahaya (mode otomatis). Log yang diharapkan, berurutan:
+   ```
+   [cmd] diterima: {"mute":1}
+   [cmd] mute -> 1 (mode otomatis, status Bahaya, buzzer 0)
+   [act] buzzer mati (high-Z)
+   [mqtt] state {"status":2,"fan":1,"mode":0,"led":3,"buzzer":0,"mute":1,"fault":0}
+   ```
+4. Bila log di atas muncul tetapi buzzer tetap bunyi, masalahnya di kelistrikan: ukur tegangan D6
+   saat mati (harus mengambang/ditarik ke VCC oleh modul) dan pastikan GND modul satu dengan
+   NodeMCU. Modul tanpa pull-up internal perlu resistor 10 kΩ dari SIG ke VCC modul.
+5. Bila `[cmd] mute` tidak muncul, cmd tidak sampai ke perangkat: cek koneksi MQTT dan topik `cmd`.
 
 ### Keterbatasan yang diketahui
 

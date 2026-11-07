@@ -33,6 +33,13 @@ constexpr bool LED_RED_ACTIVE_LOW = true;
 constexpr bool BUZZER_ACTIVE_LOW = true;
 constexpr bool RELAY_ACTIVE_LOW = false;  // modul relay alat: HIGH = kipas menyala
 
+// Buzzer active low dimatikan dengan melepas pin (pinMode INPUT, high-Z), bukan
+// menulis HIGH. Modul buzzer dicatu 5V (VIN), sedangkan HIGH ESP8266 hanya 3,3V:
+// selisih ~1,7V masih membuat transistor PNP modul menghantar sehingga buzzer
+// tetap bunyi. Saat high-Z, pull-up modul menarik SIG ke VCC dan buzzer diam.
+// Set false bila buzzer dicatu 3V3 atau dirangkai active high.
+constexpr bool BUZZER_OFF_HIGH_Z = true;
+
 // ---------------------------------------------------------------------------
 // LCD 16x2 I2C (PCF8574)
 // ---------------------------------------------------------------------------
