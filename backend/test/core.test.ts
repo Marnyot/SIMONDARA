@@ -190,32 +190,32 @@ describe('Telegram transitions', () => {
     expect(tracker.update(current)).toEqual([]);
     current.state!.fault = 7;
     expect(tracker.update(current)).toEqual([
-      'Gangguan Sensor gas (MQ-135)',
-      'Gangguan Layar LCD',
+      'Sensor gas (MQ-135) bermasalah',
+      'Layar LCD bermasalah',
     ]);
     expect(tracker.update(current)).toEqual([]);
     current.state!.fault = 2;
     expect(tracker.update(current)).toEqual([
-      'Sensor suhu/kelembapan (DHT11) normal kembali',
-      'Layar LCD normal kembali',
+      'Sensor suhu/kelembapan (DHT11) sudah normal lagi',
+      'Layar LCD sudah normal lagi',
     ]);
     current.state!.fault = 1;
     expect(tracker.update(current)).toEqual([
-      'Gangguan Sensor suhu/kelembapan (DHT11)',
-      'Sensor gas (MQ-135) normal kembali',
+      'Sensor suhu/kelembapan (DHT11) bermasalah',
+      'Sensor gas (MQ-135) sudah normal lagi',
     ]);
     current.state!.fault = 0;
     expect(tracker.update(current)).toEqual([
-      'Sensor suhu/kelembapan (DHT11) normal kembali',
+      'Sensor suhu/kelembapan (DHT11) sudah normal lagi',
     ]);
     expect(tracker.update(current)).toEqual([]);
   });
   it('includes only active faults in status text', () => {
     const current = snapshot();
-    expect(statusText(current)).not.toContain('Gangguan');
+    expect(statusText(current)).not.toContain('Bermasalah');
     current.state!.fault = 5;
     expect(statusText(current)).toContain(
-      'Gangguan: Sensor suhu/kelembapan (DHT11), Layar LCD.',
+      'Bermasalah: Sensor suhu/kelembapan (DHT11), Layar LCD.',
     );
     expect(statusText(current)).not.toContain('MQ-135');
   });
@@ -232,7 +232,9 @@ describe('Telegram transitions', () => {
     current.online = false;
     expect(tracker.update(current, 320_000)).toEqual([]);
     expect(tracker.update(current, 379_999)).toEqual([]);
-    expect(tracker.update(current, 380_000)[0]).toContain('offline');
+    expect(tracker.update(current, 380_000)[0]).toContain(
+      'terputus lebih dari 1 menit',
+    );
   });
   it('alerts danger and normal only after a danger episode, including recovery through warning', () => {
     const current = snapshot();
@@ -243,14 +245,14 @@ describe('Telegram transitions', () => {
     expect(tracker.update(current)).toEqual([]);
     current.state!.status = 2;
     expect(tracker.update(current)[0]).toBe(
-      'BAHAYA! Kualitas udara ruangan buruk. Kipas exhaust telah diaktifkan otomatis. Suhu 27.0 °C, kelembapan 52.0 % RH, gas 650 ppm.',
+      'BAHAYA! Udara di kamar sedang buruk. Kipas exhaust sudah nyala otomatis. Suhu 27.0 °C, kelembapan 52.0%, gas 650 ppm.',
     );
     expect(tracker.update(current)).toEqual([]);
     current.state!.status = 1;
     expect(tracker.update(current)).toEqual([]);
     current.state!.status = 0;
     expect(tracker.update(current)[0]).toBe(
-      'Kondisi udara ruangan telah kembali normal (Aman). Suhu 27.0 °C, kelembapan 52.0 % RH, gas 650 ppm.',
+      'Udara sudah aman lagi. Suhu 27.0 °C, kelembapan 52.0%, gas 650 ppm.',
     );
     expect(tracker.update(current)).toEqual([]);
   });
@@ -261,7 +263,7 @@ describe('Telegram transitions', () => {
     current.state!.status = 2;
     const message = tracker.update(current)[0];
     expect(message).toContain(
-      'BAHAYA! Kualitas udara ruangan buruk. Mode manual aktif; periksa dan kendalikan kipas exhaust.',
+      'BAHAYA! Udara di kamar sedang buruk. Mode manual aktif, nyalakan kipas exhaust dari aplikasi atau /kipas_on.',
     );
     expect(message).not.toContain('diaktifkan otomatis');
     expect(message).toContain('650 ppm');
@@ -276,10 +278,12 @@ describe('Telegram transitions', () => {
     expect(tracker.update(current, 60_000)).toEqual([]);
     current.online = false;
     tracker.update(current, 70_000);
-    expect(tracker.update(current, 130_000)[0]).toContain('offline');
+    expect(tracker.update(current, 130_000)[0]).toContain(
+      'terputus lebih dari 1 menit',
+    );
     expect(tracker.update(current, 140_000)).toEqual([]);
     current.online = true;
-    expect(tracker.update(current, 150_000)[0]).toContain('kembali online');
+    expect(tracker.update(current, 150_000)[0]).toContain('tersambung lagi');
   });
 });
 

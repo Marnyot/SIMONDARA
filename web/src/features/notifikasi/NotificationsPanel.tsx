@@ -27,7 +27,7 @@ export function NotificationsPanel() {
         if (controller.signal.aborted) return;
         if (cause instanceof ApiError && cause.status === 404)
           setUnavailable(true);
-        else setError('Pengaturan notifikasi belum dapat dimuat. Coba lagi.');
+        else setError('Pengaturan notifikasi gagal dimuat. Coba lagi.');
       });
     return () => controller.abort();
   }, [attempt]);
@@ -46,7 +46,7 @@ export function NotificationsPanel() {
     } catch (cause) {
       if (cause instanceof ApiError && cause.status === 404)
         setUnavailable(true);
-      else setError('Pengaturan gagal disimpan. Coba lagi.');
+      else setError('Gagal menyimpan. Coba lagi.');
     } finally {
       setBusy(false);
     }
@@ -54,9 +54,12 @@ export function NotificationsPanel() {
   return (
     <Card className={styles.panel}>
       <h2>Notifikasi Telegram</h2>
-      <p>Peringatan kualitas udara, koneksi, dan gangguan untuk semua kamar.</p>
+      <p>
+        Kabar soal kualitas udara, alat terputus, dan sensor bermasalah dari
+        semua kamar.
+      </p>
       {unavailable && !notifications ? (
-        <p role="status">Pengaturan notifikasi belum tersedia di server ini.</p>
+        <p role="status">Server ini belum mendukung pengaturan notifikasi.</p>
       ) : data ? (
         <>
           <div className={styles.row}>
@@ -119,8 +122,8 @@ export function NotificationsPanel() {
             </div>
           )}
           <p className={styles.hint}>
-            Notifikasi selama jeda tidak dikirim ulang. Alarm pada perangkat
-            tetap bekerja.
+            Selama dijeda, notifikasi tidak dikirim dan tidak menyusul nanti.
+            Alarm di alat tetap bunyi.
           </p>
         </>
       ) : !error ? (

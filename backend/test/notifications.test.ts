@@ -238,7 +238,7 @@ it.each(['global', 'snooze', 'room'])(
     expect(messages).toEqual([]);
     bridge.ingest('simondara/kos-01/state', JSON.stringify(initialState));
     expect(messages).toHaveLength(1);
-    expect(messages[0]).toContain('Aman');
+    expect(messages[0]).toContain('aman lagi');
     expect(
       store.events('kos-01', 50).filter((event) => event.type === 'status'),
     ).toHaveLength(5);
@@ -263,25 +263,25 @@ it('handles bot switches, room names/mentions, snooze bounds and status/help eve
   await telegram.handleCommand('/notif_off@SimondaraBot lantai ATAS');
   expect(store.room('upstairs')?.notify).toBe(false);
   await telegram.handleCommand('/notif_jeda');
-  expect(messages.at(-1)).toContain('Jeda sampai 18.40 WIB.');
+  expect(messages.at(-1)).toContain('Dijeda sampai 18.40 WIB.');
   await telegram.handleCommand('/status upstairs');
-  expect(messages.at(-1)).toContain('Jeda sampai 18.40 WIB.');
+  expect(messages.at(-1)).toContain('Dijeda sampai 18.40 WIB.');
   expect(
     Date.parse(store.notifications().snoozedUntil!) - Date.now(),
   ).toBeGreaterThan(59 * 60_000);
   for (const invalid of ['14', '1441', '-1', '15.5', '15abc', '15 20']) {
     await telegram.handleCommand(`/notif_jeda ${invalid}`);
-    expect(messages.at(-1)).toContain('0 atau 15–1440');
+    expect(messages.at(-1)).toContain('15 sampai 1440 menit');
   }
   await telegram.handleCommand('/notif_jeda 1440');
   await telegram.handleCommand('/status');
-  expect(messages.at(-1)).toContain('Notifikasi global: mati');
-  expect(messages.at(-1)).toContain('Jeda sampai Min, 8 Nov 17.40 WIB.');
-  expect(messages.at(-1)).toContain('Notifikasi kamar mati: Lantai Atas');
+  expect(messages.at(-1)).toContain('Notifikasi: mati');
+  expect(messages.at(-1)).toContain('Dijeda sampai Min, 8 Nov 17.40 WIB.');
+  expect(messages.at(-1)).toContain('Dimatikan untuk: Lantai Atas');
   await telegram.handleCommand('/notif_on UPSTAIRS');
   expect(store.room('upstairs')?.notify).toBe(true);
   await telegram.handleCommand('/notif_on unknown');
-  expect(messages.at(-1)).toContain('Kamar tidak ditemukan');
+  expect(messages.at(-1)).toContain('Kamarnya tidak ada');
   await telegram.handleCommand('/notif_jeda 0');
   expect(store.notifications().snoozedUntil).toBeNull();
   await telegram.handleCommand('/notif_on');

@@ -53,7 +53,7 @@ export function GasGauge({
   const label =
     value === null || !status
       ? `Kadar gas belum tersedia. ${scale}`
-      : `Kadar gas ${ppmText(value)} ppm${over ? `, melebihi skala ${ppmText(max)} ppm` : ''}, ${unreliable ? 'sensor gas bermasalah sehingga status belum dapat dipastikan' : `status ${status.label}`}. ${scale}`;
+      : `Kadar gas ${ppmText(value)} ppm${over ? `, melebihi skala ${ppmText(max)} ppm` : ''}, ${unreliable ? 'sensor gas bermasalah, status belum bisa dipastikan' : `status ${status.label}`}. ${scale}`;
 
   return (
     <div

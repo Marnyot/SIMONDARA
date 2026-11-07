@@ -288,8 +288,8 @@ describe('Telegram room commands and notifications', () => {
         JSON.stringify({ ...initialState, fault: 5 }),
       );
       expect(messages).toEqual([
-        'Kamar 1: Gangguan Sensor gas (MQ-135)',
-        'Kamar 2: Gangguan Layar LCD',
+        'Kamar 1: Sensor gas (MQ-135) bermasalah',
+        'Kamar 2: Layar LCD bermasalah',
       ]);
       bridge.ingest(
         'simondara/unregistered/state',
@@ -300,10 +300,10 @@ describe('Telegram room commands and notifications', () => {
         'simondara/kamar-02/state',
         JSON.stringify({ ...initialState, fault: 1 }),
       );
-      expect(messages.at(-1)).toBe('Kamar 2: Layar LCD normal kembali');
+      expect(messages.at(-1)).toBe('Kamar 2: Layar LCD sudah normal lagi');
       await telegram.handleCommand('/status');
       expect(messages.at(-1)).toContain(
-        'Gangguan: Sensor suhu/kelembapan (DHT11), Sensor gas (MQ-135).',
+        'Bermasalah: Sensor suhu/kelembapan (DHT11), Sensor gas (MQ-135).',
       );
       const count = messages.length;
       bridge.ingest('simondara/kamar-02/online', '1');
@@ -312,11 +312,11 @@ describe('Telegram room commands and notifications', () => {
       await vi.advanceTimersByTimeAsync(59_999);
       expect(messages).toHaveLength(count);
       await vi.advanceTimersByTimeAsync(1);
-      expect(messages.at(-1)).toMatch(/^Kamar 2: .*offline/);
-      bridge.ingest('simondara/kamar-02/online', '1');
-      expect(messages.at(-1)).toBe(
-        'Kamar 2: Perangkat SIMONDARA kembali online.',
+      expect(messages.at(-1)).toMatch(
+        /^Kamar 2: .*terputus lebih dari 1 menit/,
       );
+      bridge.ingest('simondara/kamar-02/online', '1');
+      expect(messages.at(-1)).toBe('Kamar 2: Alat tersambung lagi.');
     } finally {
       await telegram.close();
     }
@@ -365,13 +365,13 @@ describe('Telegram room commands and notifications', () => {
       await vi.advanceTimersByTimeAsync(59_999);
       expect(messages).toHaveLength(1);
       await vi.advanceTimersByTimeAsync(1);
-      expect(messages.at(-1)).toMatch(/^Kamar 2: .*offline/);
-      bridge.ingest('simondara/kamar-02/online', '1');
-      expect(messages.at(-1)).toBe(
-        'Kamar 2: Perangkat SIMONDARA kembali online.',
+      expect(messages.at(-1)).toMatch(
+        /^Kamar 2: .*terputus lebih dari 1 menit/,
       );
+      bridge.ingest('simondara/kamar-02/online', '1');
+      expect(messages.at(-1)).toBe('Kamar 2: Alat tersambung lagi.');
       bridge.ingest('simondara/kos-01/state', JSON.stringify(initialState));
-      expect(messages.at(-1)).toMatch(/^Kamar 1: .*Aman/);
+      expect(messages.at(-1)).toMatch(/^Kamar 1: .*aman lagi/);
       store.deleteRoom('kamar-02');
       bridge.roomsChanged();
       const count = messages.length;
@@ -419,15 +419,15 @@ describe('Telegram room commands and notifications', () => {
     await telegram.handleCommand('/otomatis KAMAR-02');
     expect(publish).toHaveBeenLastCalledWith('kamar-02', { mode: 0 });
     await telegram.handleCommand('/status');
-    expect(messages.at(-1)).toContain('Kamar 1: SIMONDARA:');
-    expect(messages.at(-1)).toContain('Lantai Atas: SIMONDARA:');
+    expect(messages.at(-1)).toContain('Kamar 1: Alat');
+    expect(messages.at(-1)).toContain('Lantai Atas: Alat');
     await telegram.handleCommand('/status lantai atas');
     expect(messages.at(-1)).toMatch(/^Lantai Atas:/);
     expect(messages.at(-1)).not.toContain('Kamar 1');
     publish.mockClear();
     await telegram.handleCommand('/kipas_on unknown');
     expect(publish).not.toHaveBeenCalled();
-    expect(messages.at(-1)).toContain('Kamar tidak ditemukan');
+    expect(messages.at(-1)).toContain('Kamarnya tidak ada');
     await telegram.close();
   });
 });

@@ -46,8 +46,8 @@ export default function RoomLayout() {
               </Link>
             }
           >
-            Kamar mungkin sudah dihapus atau alamatnya keliru. Pilih kamar dari
-            daftar untuk melanjutkan.
+            Mungkin kamarnya sudah dihapus atau alamatnya salah. Pilih dari
+            daftar kamar.
           </EmptyState>
         </Card>
       </>

@@ -28,7 +28,7 @@ export function MuteAlarmButton({
   useEffect(() => {
     if (result !== 'success') return;
     const timer = window.setTimeout(() => {
-      setError('Perangkat belum mengonfirmasi perintah. Coba lagi.');
+      setError('Alat belum membalas. Coba lagi.');
       setResult('error');
     }, 8000);
     return () => window.clearTimeout(timer);
@@ -45,7 +45,7 @@ export function MuteAlarmButton({
       setError(
         cause instanceof Error
           ? cause.message
-          : 'Alarm gagal dibisukan. Coba lagi.',
+          : 'Gagal membisukan alarm. Coba lagi.',
       );
       setResult('error');
     } finally {
@@ -79,8 +79,8 @@ export function MuteAlarmButton({
       {result === 'success' ? (
         <p role="status" className={styles.feedback}>
           {muted
-            ? 'Menunggu konfirmasi perangkat…'
-            : 'Perintah bisukan alarm terkirim. Menunggu konfirmasi perangkat.'}
+            ? 'Menunggu balasan alat…'
+            : 'Perintah terkirim, menunggu balasan alat…'}
         </p>
       ) : muted ? (
         <p role="status" className={styles.feedback}>
@@ -88,7 +88,7 @@ export function MuteAlarmButton({
         </p>
       ) : offline ? (
         <p className={styles.feedback}>
-          Hubungkan perangkat dan server untuk membisukan alarm.
+          Alarm bisa dibisukan setelah alat dan server tersambung.
         </p>
       ) : null}
       {result === 'error' ? (

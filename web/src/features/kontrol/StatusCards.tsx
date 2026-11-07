@@ -49,10 +49,10 @@ export function LcdCard({
       </div>
       <p className={styles.hint}>
         {lcdFault
-          ? 'Layar LCD pada perangkat mengalami gangguan; tampilan fisiknya bisa berbeda dari pratinjau ini.'
+          ? 'Layar LCD di alat sedang bermasalah, jadi tampilannya bisa beda dari pratinjau ini.'
           : online
-            ? `Pratinjau layar ${LCD_COLUMNS}×2 pada perangkat, dari data terakhir.`
-            : 'Perangkat terputus. Pratinjau menampilkan data terakhir yang diterima.'}
+            ? `Tampilan layar ${LCD_COLUMNS}×2 di alat saat ini.`
+            : 'Alat sedang terputus, jadi pratinjau ini memakai data terakhir.'}
       </p>
     </Card>
   );

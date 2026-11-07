@@ -92,8 +92,7 @@ export default function Riwayat() {
               <ErrorState message={history.error} onRetry={history.retry} />
             ) : history.points.length === 0 ? (
               <EmptyState title="Belum ada pengukuran">
-                Belum ada data sensor pada rentang ini. Pilih rentang waktu
-                lain.
+                Belum ada data di rentang ini. Coba pilih rentang lain.
               </EmptyState>
             ) : (
               <Suspense
@@ -141,8 +140,7 @@ export default function Riwayat() {
             <ErrorState message={events.error} onRetry={events.retry} />
           ) : events.events.length === 0 ? (
             <EmptyState title="Belum ada peristiwa">
-              Perubahan kualitas udara dan koneksi perangkat akan muncul di
-              sini.
+              Perubahan kondisi udara dan koneksi alat muncul di sini.
             </EmptyState>
           ) : (
             <ul>

@@ -107,9 +107,7 @@ function ChartTooltip({
         <p className={styles.tooltipTime}>
           <strong>{formatSpan(probe.from, probe.to)}</strong>
         </p>
-        <p className={styles.tooltipTime}>
-          Tidak ada pengukuran tersimpan pada interval ini
-        </p>
+        <p className={styles.tooltipTime}>Tidak ada data di jam ini</p>
       </div>
     );
   }
@@ -166,9 +164,9 @@ export default function SensorChart({
   if (!first || !last) {
     return (
       <div className={styles.empty} role="status">
-        <p>Belum ada pengukuran pada rentang ini</p>
+        <p>Belum ada data di rentang ini</p>
         <p className={styles.emptyLast}>
-          Grafik muncul setelah perangkat mengirim data.
+          Grafik muncul setelah alat mengirim data.
         </p>
       </div>
     );
@@ -206,7 +204,7 @@ export default function SensorChart({
   const covered = last.time - first.time;
   const sparse = to > from && covered / (to - from) < SPARSE_COVERAGE;
   const coverage = sparse
-    ? `Baru ${formatDuration(covered)} data tersedia`
+    ? `Baru ada data ${formatDuration(covered)}`
     : `Data tersedia ${formatSpan(first.time, last.time)}${gaps.length ? ' · ada jeda' : ''}`;
 
   return (

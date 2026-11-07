@@ -35,7 +35,7 @@ describe('error server kamar', () => {
   it('409 diarahkan ke kolom yang bermasalah dengan pesan Indonesia', () => {
     expect(describeRoomError(conflict('device_exists'))).toMatchObject({
       field: 'deviceId',
-      message: expect.stringContaining('sudah terdaftar'),
+      message: expect.stringContaining('sudah dipakai kamar lain'),
     });
     expect(describeRoomError(conflict('name_exists'))).toMatchObject({
       field: 'name',
@@ -44,7 +44,7 @@ describe('error server kamar', () => {
   });
   it('kesalahan lain menjadi pesan umum tanpa kolom', () => {
     expect(describeRoomError(new ApiError(400, 'x')).field).toBeUndefined();
-    expect(describeRoomError(new Error('x')).message).toMatch(/gagal/);
+    expect(describeRoomError(new Error('x')).message).toMatch(/gagal/i);
   });
 });
 

@@ -211,7 +211,7 @@ export function liveReducer(current: LiveState, action: LiveAction): LiveState {
             notify(state, {
               kind: 'newDevice',
               deviceId,
-              message: `Perangkat baru terdeteksi: ${deviceId}`,
+              message: `Ada alat baru: ${deviceId}`,
             }),
           next,
         );
@@ -275,7 +275,7 @@ export function liveReducer(current: LiveState, action: LiveAction): LiveState {
           {
             kind: 'safe',
             deviceId,
-            message: `${name}: kembali Aman. Kualitas udara sudah normal.`,
+            message: `${name}: udara sudah aman lagi.`,
           },
         );
       }

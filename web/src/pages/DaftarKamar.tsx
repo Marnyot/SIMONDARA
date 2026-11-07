@@ -136,8 +136,7 @@ function RoomOverview() {
                 </Link>
               }
             >
-              Daftarkan perangkat NodeMCU sebagai kamar untuk mulai memantau
-              kualitas udaranya.
+              Daftarkan NodeMCU sebagai kamar supaya udaranya bisa dipantau.
             </EmptyState>
           </Card>
         )}

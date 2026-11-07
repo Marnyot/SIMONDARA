@@ -63,7 +63,7 @@ describe('halaman Kontrol', () => {
     expect(screen.getByRole('switch', { name: 'Buzzer' })).toBeDisabled();
     expect(screen.getByRole('radio', { name: 'Merah' })).toBeDisabled();
     expect(
-      screen.getAllByText('Ubah ke mode Manual untuk mengendalikan'),
+      screen.getAllByText('Pindah ke mode Manual untuk mengatur sendiri'),
     ).toHaveLength(3);
     expect(screen.getByRole('radio', { name: 'Manual' })).toBeEnabled();
     expect(screen.getByRole('button', { name: 'Bisukan alarm' })).toBeEnabled();
@@ -92,7 +92,7 @@ describe('halaman Kontrol', () => {
     fireEvent.click(fanSwitch());
     expect(fanSwitch()).toBeChecked();
     expect(fanSwitch()).toHaveAttribute('aria-busy', 'true');
-    expect(screen.getByText('Menunggu konfirmasi perangkat…')).toBeVisible();
+    expect(screen.getByText('Menunggu balasan alat…')).toBeVisible();
     fireEvent.click(fanSwitch());
     expect(value.sendCommand).toHaveBeenCalledTimes(1);
 
@@ -142,7 +142,7 @@ describe('halaman Kontrol', () => {
 
   it('menonaktifkan semua kontrol saat perangkat offline', () => {
     renderPage(live({ online: false }));
-    expect(screen.getByText(/Perangkat terputus\. Kontrol/)).toBeVisible();
+    expect(screen.getByText(/Alat sedang terputus\. Kontrol/)).toBeVisible();
     expect(fanSwitch()).toBeDisabled();
     expect(screen.getByRole('radio', { name: 'Otomatis' })).toBeDisabled();
     expect(

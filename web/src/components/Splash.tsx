@@ -4,7 +4,7 @@ export function Splash({ phase }: { phase: 'auth' | 'snapshot' | 'ready' }) {
   const progress = phase === 'auth' ? 15 : phase === 'snapshot' ? 55 : 100;
   const text =
     phase === 'auth'
-      ? 'Menghubungkan ke server...'
+      ? 'Menyambung ke server…'
       : phase === 'snapshot'
         ? 'Memuat data perangkat...'
         : 'Siap';

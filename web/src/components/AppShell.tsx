@@ -123,7 +123,7 @@ export function AppShell() {
       {/* Stays mounted so screen readers announce the text when it appears. */}
       <div role="status" className={styles.connectionBanner}>
         {connection === 'reconnecting' ? (
-          <p>Koneksi ke server terputus, menyambung ulang...</p>
+          <p>Koneksi ke server putus, sedang menyambung lagi…</p>
         ) : null}
       </div>
       <Toaster />

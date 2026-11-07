@@ -47,7 +47,7 @@ export async function request<T>(
       throw error;
     throw new ApiError(
       0,
-      'Server tidak dapat dijangkau. Periksa koneksi lalu coba lagi.',
+      'Server tidak bisa dihubungi. Cek internet, lalu coba lagi.',
       error,
     );
   }
@@ -58,8 +58,8 @@ export async function request<T>(
     throw new ApiError(
       response.status,
       response.status === 401
-        ? 'Sesi berakhir atau kata sandi salah. Silakan masuk kembali.'
-        : `Permintaan gagal (${response.status}). Silakan coba lagi.`,
+        ? 'Sesi habis atau kata sandi salah. Masuk lagi, ya.'
+        : `Gagal (${response.status}). Coba lagi.`,
       undefined,
       errorBodySchema.safeParse(body).data?.error,
     );
@@ -71,7 +71,7 @@ export async function request<T>(
   } catch (error) {
     throw new ApiError(
       response.status,
-      'Respons server tidak sesuai format.',
+      'Balasan server tidak dikenali.',
       error,
     );
   }

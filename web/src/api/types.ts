@@ -30,13 +30,13 @@ export const deviceIdSchema = z
   .min(1, 'ID perangkat wajib diisi.')
   .regex(
     /^[a-z0-9][a-z0-9-]{0,31}$/,
-    'ID perangkat maksimal 32 karakter: huruf kecil, angka, dan tanda hubung, diawali huruf atau angka.',
+    'ID maks. 32 karakter: huruf kecil, angka, dan tanda hubung, diawali huruf atau angka.',
   );
 export const roomNameSchema = z
   .string()
   .trim()
   .min(1, 'Nama kamar wajib diisi.')
-  .max(40, 'Nama kamar maksimal 40 karakter.');
+  .max(40, 'Nama kamar maks. 40 karakter.');
 export const roomSchema = snapshotSchema.extend({
   deviceId: deviceIdSchema,
   name: z.string().min(1),

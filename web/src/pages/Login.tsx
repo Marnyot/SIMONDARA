@@ -24,9 +24,7 @@ export default function Login() {
       setPassword('');
     } catch (cause) {
       setError(
-        cause instanceof Error
-          ? cause.message
-          : 'Tidak dapat masuk. Silakan coba lagi.',
+        cause instanceof Error ? cause.message : 'Gagal masuk. Coba lagi.',
       );
     } finally {
       setLoading(false);
@@ -39,7 +37,7 @@ export default function Login() {
       <Brand splash />
       <div className={styles.formPanel}>
         <h1>Selamat datang</h1>
-        <p>Masuk untuk memantau udara ruangan Anda.</p>
+        <p>Masuk untuk memantau udara di kamar.</p>
         {status === 'error' ? (
           <ErrorState
             message={authError ?? 'Pemeriksaan sesi gagal.'}

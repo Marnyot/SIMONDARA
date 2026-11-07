@@ -49,15 +49,15 @@ describe('teks peristiwa', () => {
     [2, 'Bahaya'],
   ] as const)('status %i menjadi %s', (value, label) => {
     expect(describeEvent({ at, type: 'status', value }).text).toBe(
-      `Kualitas udara berubah ke ${label}`,
+      `Udara jadi ${label}`,
     );
   });
   it('membedakan perangkat terhubung dan terputus', () => {
     expect(describeEvent({ at, type: 'online', value: true }).text).toBe(
-      'Perangkat terhubung kembali',
+      'Alat tersambung lagi',
     );
     expect(describeEvent({ at, type: 'online', value: false }).text).toBe(
-      'Perangkat terputus',
+      'Alat terputus',
     );
   });
 });

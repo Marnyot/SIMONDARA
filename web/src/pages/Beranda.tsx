@@ -29,7 +29,7 @@ import styles from './Beranda.module.css';
 
 const SensorChart = lazy(() => import('../features/riwayat/SensorChart'));
 
-const UNRELIABLE_NOTE = 'Sensor gangguan, nilai tidak andal';
+const UNRELIABLE_NOTE = 'Sensor bermasalah, angka belum tentu benar';
 
 function GasTrend() {
   const { deviceId } = useRoom();
@@ -48,7 +48,7 @@ function GasTrend() {
           <ErrorState message={error} onRetry={retry} />
         ) : points.length === 0 || from === null || to === null ? (
           <EmptyState title="Belum ada riwayat gas">
-            Pengukuran akan muncul setelah sensor mengirim data.
+            Angka muncul setelah sensor mengirim data.
           </EmptyState>
         ) : (
           <Suspense
@@ -86,10 +86,10 @@ export default function Beranda() {
       <div className={styles.layout}>
         {!online ? (
           <p className={styles.offline} role="status">
-            Perangkat terputus.{' '}
+            Alat sedang tidak terhubung.{' '}
             {telemetry || state
-              ? 'Data terakhir ditampilkan; kondisi saat ini belum dapat dipastikan.'
-              : 'Menunggu perangkat terhubung untuk menerima data.'}
+              ? 'Angka di bawah adalah data terakhir sebelum terputus, jadi bisa saja sudah berubah.'
+              : 'Data akan muncul setelah alat tersambung lagi.'}
           </p>
         ) : null}
         {telemetry && status !== null ? (
@@ -124,10 +124,10 @@ export default function Beranda() {
                 <p className={styles.advice}>{statusAdvice(telemetry)}</p>
                 {!online || unreliable.t || unreliable.h || unreliable.ppm ? (
                   <p className={styles.source}>
-                    Berdasarkan data terakhir.{' '}
+                    Ini data terakhir.{' '}
                     {!online
-                      ? 'Perangkat terputus; kondisi saat ini belum dapat dipastikan.'
-                      : 'Sensor mengalami gangguan; periksa perangkat sebelum mengandalkan pengukuran.'}
+                      ? 'Alat sedang terputus, jadi kondisi sekarang belum diketahui.'
+                      : 'Ada sensor yang bermasalah, cek alatnya dulu sebelum percaya angka ini.'}
                   </p>
                 ) : null}
                 <MuteAlarmButton />
@@ -211,7 +211,7 @@ export default function Beranda() {
         ) : (
           <Card className={styles.full}>
             <EmptyState title="Belum ada pengukuran">
-              Menunggu data suhu, kelembapan, dan kadar gas dari perangkat.
+              Menunggu data suhu, kelembapan, dan gas dari alat.
             </EmptyState>
           </Card>
         )}
@@ -263,7 +263,7 @@ export default function Beranda() {
                 </div>
               </dl>
             ) : (
-              <p className={styles.source}>Status aktuator belum tersedia.</p>
+              <p className={styles.source}>Status alat belum masuk.</p>
             )}
             {!telemetry ? <MuteAlarmButton /> : null}
           </Card>

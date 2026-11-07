@@ -43,14 +43,14 @@ export function formatSnoozeTime(until: string, now = new Date()): string {
 export function sensorText(snapshot: Snapshot): string {
   const t = snapshot.telemetry;
   return t
-    ? `Suhu ${t.t.toFixed(1)} °C, kelembapan ${t.h.toFixed(1)} % RH, gas ${t.ppm} ppm.`
-    : 'Data sensor belum tersedia.';
+    ? `Suhu ${t.t.toFixed(1)} °C, kelembapan ${t.h.toFixed(1)}%, gas ${t.ppm} ppm.`
+    : 'Belum ada data sensor.';
 }
 export function statusText(snapshot: Snapshot): string {
   const faults = faultComponents
     .filter(([bit]) => (snapshot.state?.fault ?? 0) & bit)
     .map(([, name]) => name);
-  return `SIMONDARA: ${snapshot.online ? 'online' : 'offline'}. Status ${snapshot.state ? ['Aman', 'Waspada', 'Bahaya'][snapshot.state.status] : 'belum tersedia'}. ${sensorText(snapshot)}${faults.length ? ` Gangguan: ${faults.join(', ')}.` : ''}`;
+  return `${snapshot.online ? 'Alat tersambung' : 'Alat terputus'}. Udara ${snapshot.state ? ['aman', 'waspada', 'bahaya'][snapshot.state.status] : 'belum diketahui'}. ${sensorText(snapshot)}${faults.length ? ` Bermasalah: ${faults.join(', ')}.` : ''}`;
 }
 
 // Deterministic transition logic; offline grace is checked periodically by the bot.
@@ -74,13 +74,11 @@ export class Notifications {
       if (status === 2) {
         this.dangerSeen = true;
         messages.push(
-          `BAHAYA! Kualitas udara ruangan buruk. ${snapshot.state?.mode === 0 ? 'Kipas exhaust telah diaktifkan otomatis.' : 'Mode manual aktif; periksa dan kendalikan kipas exhaust.'} ${sensorText(snapshot)}`,
+          `BAHAYA! Udara di kamar sedang buruk. ${snapshot.state?.mode === 0 ? 'Kipas exhaust sudah nyala otomatis.' : 'Mode manual aktif, nyalakan kipas exhaust dari aplikasi atau /kipas_on.'} ${sensorText(snapshot)}`,
         );
       } else if (status === 0 && this.dangerSeen) {
         this.dangerSeen = false;
-        messages.push(
-          `Kondisi udara ruangan telah kembali normal (Aman). ${sensorText(snapshot)}`,
-        );
+        messages.push(`Udara sudah aman lagi. ${sensorText(snapshot)}`);
       }
       this.previousStatus = status;
     }
@@ -88,14 +86,13 @@ export class Notifications {
     for (const [bit, name] of faultComponents) {
       if ((fault & bit) === (this.previousFault & bit)) continue;
       messages.push(
-        fault & bit ? `Gangguan ${name}` : `${name} normal kembali`,
+        fault & bit ? `${name} bermasalah` : `${name} sudah normal lagi`,
       );
     }
     this.previousFault = fault;
     if (this.previousOnline && !snapshot.online) this.offlineAt = now;
     if (snapshot.online) {
-      if (this.offlineSent)
-        messages.push('Perangkat SIMONDARA kembali online.');
+      if (this.offlineSent) messages.push('Alat tersambung lagi.');
       this.offlineAt = undefined;
       this.offlineSent = false;
     } else if (
@@ -105,7 +102,7 @@ export class Notifications {
     ) {
       this.offlineSent = true;
       messages.push(
-        'Perangkat SIMONDARA offline lebih dari 60 detik. Periksa koneksi perangkat.',
+        'Alat terputus lebih dari 1 menit. Cek listrik dan Wi-Fi alatnya.',
       );
     }
     this.previousOnline = snapshot.online;
@@ -113,7 +110,7 @@ export class Notifications {
   }
 }
 const help =
-  'SIMONDARA\n/status [kamar] — kondisi terkini\n/kipas_on <kamar> — mode manual, kipas menyala\n/kipas_off <kamar> — mode manual, kipas mati\n/otomatis <kamar> — mode otomatis\n/notif_off [kamar] — matikan notifikasi\n/notif_on [kamar] — aktifkan notifikasi\n/notif_jeda [menit] — jeda global (default 60; 0 batalkan)\n/help — bantuan';
+  'SIMONDARA\n/status [kamar] — cek kondisi sekarang\n/kipas_on <kamar> — nyalakan kipas (mode manual)\n/kipas_off <kamar> — matikan kipas (mode manual)\n/otomatis <kamar> — balik ke mode otomatis\n/notif_off [kamar] — matikan notifikasi\n/notif_on [kamar] — nyalakan notifikasi\n/notif_jeda [menit] — jeda semua notifikasi (default 60, 0 untuk batal)\n/help — daftar perintah';
 const updatesSchema = z.array(
   z.object({
     update_id: z.number().int(),
@@ -144,7 +141,7 @@ export function resolveRoom(rooms: Room[], argument: string): Room | undefined {
 const roomListText = (rooms: Room[]) =>
   rooms.length
     ? `Pilih kamar:\n${rooms.map((room) => `${room.name} (${room.deviceId})`).join('\n')}`
-    : 'Belum ada kamar terdaftar.';
+    : 'Belum ada kamar.';
 
 export class Telegram {
   private readonly abort = new AbortController();
@@ -196,7 +193,7 @@ export class Telegram {
     const disabled = rooms
       .filter((room) => !room.notify)
       .map((room) => room.name);
-    return `Notifikasi global: ${settings.enabled ? 'aktif' : 'mati'}.${settings.snoozedUntil ? ` Jeda sampai ${formatSnoozeTime(settings.snoozedUntil)}.` : ''}${disabled.length ? ` Notifikasi kamar mati: ${disabled.join(', ')}.` : ''}`;
+    return `Notifikasi: ${settings.enabled ? 'nyala' : 'mati'}.${settings.snoozedUntil ? ` Dijeda sampai ${formatSnoozeTime(settings.snoozedUntil)}.` : ''}${disabled.length ? ` Dimatikan untuk: ${disabled.join(', ')}.` : ''}`;
   }
   async handleCommand(text: string) {
     const parsed = parseTelegramCommand(text);
@@ -212,7 +209,7 @@ export class Telegram {
         argument === '' ? 60 : /^\d+$/.test(argument) ? Number(argument) : NaN;
       const parsedMinutes = snoozeMinutesSchema.safeParse(minutes);
       if (!parsedMinutes.success) {
-        await this.send('Jeda harus 0 atau 15–1440 menit.');
+        await this.send('Jedanya 15 sampai 1440 menit, atau 0 untuk batal.');
         return;
       }
       this.bridge.updateNotifications({ snoozeMinutes: parsedMinutes.data });
@@ -251,7 +248,7 @@ export class Telegram {
     if (!room) {
       await this.send(
         argument
-          ? `Kamar tidak ditemukan.\n${roomListText(rooms)}`
+          ? `Kamarnya tidak ada.\n${roomListText(rooms)}`
           : roomListText(rooms),
       );
       return;
@@ -267,7 +264,7 @@ export class Telegram {
         notify: command === '/notif_on',
       });
       await this.send(
-        `${room.name}: Notifikasi ${updated.notify ? 'aktif' : 'mati'}.`,
+        `${room.name}: notifikasi ${updated.notify ? 'nyala' : 'mati'}.`,
       );
       return;
     }
@@ -278,10 +275,10 @@ export class Telegram {
           ? { mode: 0 }
           : { mode: 1, fan: command === '/kipas_on' ? 1 : 0 },
       );
-      await this.send(`${room.name}: Perintah dikirim ke perangkat.`);
+      await this.send(`${room.name}: perintah sudah dikirim ke alat.`);
     } catch {
       await this.send(
-        `${room.name}: Perintah gagal dikirim: broker belum terhubung.`,
+        `${room.name}: perintah gagal dikirim, server belum tersambung ke broker.`,
       );
     }
   }

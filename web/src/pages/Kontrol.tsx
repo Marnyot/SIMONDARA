@@ -33,7 +33,7 @@ export default function Kontrol() {
     <Card>
       <h3 className={controlStyles.title}>Alarm perangkat</h3>
       <p className={styles.sectionHint}>
-        Bisukan alarm sementara sampai kualitas udara kembali Aman.
+        Matikan bunyi alarm sampai udara aman lagi.
       </p>
       <MuteAlarmButton alwaysShow />
     </Card>
@@ -45,8 +45,8 @@ export default function Kontrol() {
       {offline ? (
         <p className={styles.banner} role="status">
           {!online
-            ? 'Perangkat terputus. Kontrol dinonaktifkan sampai perangkat tersambung kembali.'
-            : 'Koneksi ke server terputus. Kontrol dinonaktifkan sementara aplikasi menyambung ulang.'}
+            ? 'Alat sedang terputus. Kontrol bisa dipakai lagi setelah alat tersambung.'
+            : 'Koneksi ke server putus. Kontrol dimatikan dulu sampai tersambung lagi.'}
         </p>
       ) : null}
       {error ? (
@@ -107,7 +107,7 @@ export default function Kontrol() {
           ) : (
             <Card>
               <EmptyState title="Belum ada status perangkat">
-                Kontrol tersedia setelah perangkat mengirim status pertamanya.
+                Kontrol bisa dipakai setelah alat mengirim status pertama.
                 Pastikan NodeMCU menyala dan terhubung ke WiFi.
               </EmptyState>
             </Card>

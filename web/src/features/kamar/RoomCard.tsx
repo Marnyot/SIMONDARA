@@ -28,9 +28,7 @@ function LastData({ at, online }: { at: string | null; online: boolean }) {
     >
       <StatusDot color={online ? 'var(--color-safe)' : 'var(--color-danger)'} />
       {online ? 'Terhubung' : 'Terputus'} ·{' '}
-      {at
-        ? `Data terakhir ${formatRelativeTime(at, now)}`
-        : 'Belum pernah mengirim data'}
+      {at ? `Data terakhir ${formatRelativeTime(at, now)}` : 'Belum ada data'}
     </p>
   );
 }
@@ -115,7 +113,7 @@ function RoomCardBase({ room }: { room: Room }) {
           />
         </dl>
       ) : (
-        <p className={styles.waiting}>Menunggu data sensor dari perangkat.</p>
+        <p className={styles.waiting}>Menunggu data dari alat.</p>
       )}
       <Suspense
         fallback={

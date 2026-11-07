@@ -11,7 +11,7 @@ export function RoomNotification({ room }: { room: Room }) {
   const [error, setError] = useState('');
   if (room.notify === undefined || !setRoomNotify) return null;
   if (unavailable)
-    return <p className={styles.hint}>Pengaturan notifikasi belum tersedia.</p>;
+    return <p className={styles.hint}>Notifikasi belum bisa diatur.</p>;
   return (
     <div className={styles.room}>
       <div className={styles.row}>
@@ -28,7 +28,7 @@ export function RoomNotification({ room }: { room: Room }) {
               .catch((cause: unknown) => {
                 if (cause instanceof ApiError && cause.status === 404)
                   setUnavailable(true);
-                else setError('Notifikasi gagal diubah. Coba lagi.');
+                else setError('Gagal mengubah notifikasi. Coba lagi.');
               })
               .finally(() => setBusy(false));
           }}

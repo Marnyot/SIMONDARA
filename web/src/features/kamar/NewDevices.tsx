@@ -23,7 +23,7 @@ export function NewDevices({ devices }: { devices: UnregisteredDevice[] }) {
         Perangkat baru terdeteksi
       </h2>
       <p className={styles.panelHint}>
-        Perangkat ini sudah mengirim data, tetapi belum terdaftar sebagai kamar.
+        Alat ini sudah mengirim data tapi belum didaftarkan jadi kamar.
       </p>
       <ul className={styles.deviceList}>
         {devices.map(({ deviceId, online, lastSeen }) => (
@@ -40,7 +40,8 @@ export function NewDevices({ devices }: { devices: UnregisteredDevice[] }) {
                 {formatRelativeTime(lastSeen, now)}
               </span>
             </div>
-            <Link viewTransition
+            <Link
+              viewTransition
               to={newRoomUrl(deviceId)}
               className={ui.button}
               data-variant="secondary"

@@ -25,7 +25,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           cause instanceof DOMException &&
           cause.name === 'AbortError'
         ) {
-          setError('Server belum merespons. Silakan coba lagi.');
+          setError('Server belum menjawab. Coba lagi sebentar lagi.');
           setStatus('error');
           return;
         }

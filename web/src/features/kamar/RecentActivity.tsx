@@ -142,8 +142,8 @@ export function RecentActivity({ rooms }: { rooms: Room[] }) {
             }
           >
             {current?.failed
-              ? 'Aktivitas akan dimuat kembali secara berkala.'
-              : 'Perubahan kualitas udara dan koneksi semua kamar akan muncul di sini.'}
+              ? 'Aktivitas dimuat ulang sebentar lagi.'
+              : 'Perubahan kondisi udara dan koneksi tiap kamar muncul di sini.'}
           </EmptyState>
         )}
       </LoadingSwap>

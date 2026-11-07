@@ -95,26 +95,23 @@ export function describeRoomError(cause: unknown): RoomError {
     if (cause.code === 'device_exists')
       return {
         field: 'deviceId',
-        message:
-          'ID perangkat ini sudah terdaftar sebagai kamar. Periksa kembali ID-nya.',
+        message: 'ID ini sudah dipakai kamar lain. Cek lagi ID-nya.',
       };
     if (cause.code === 'name_exists')
       return {
         field: 'name',
-        message:
-          'Nama ini sudah dipakai kamar lain. Gunakan nama yang berbeda.',
+        message: 'Nama ini sudah dipakai. Pakai nama lain.',
       };
     if (cause.code === 'room_not_found')
       return {
-        message:
-          'Kamar ini sudah tidak terdaftar, mungkin baru saja dihapus. Periksa kembali daftar kamar.',
+        message: 'Kamar ini sudah tidak ada, mungkin baru dihapus.',
       };
     if (cause.status === 400)
       return {
         message:
-          'Server menolak data kamar. Periksa ID perangkat dan nama kamar lalu coba lagi.',
+          'Server menolak data ini. Cek ID dan nama kamar, lalu coba lagi.',
       };
     return { message: cause.message };
   }
-  return { message: 'Perubahan gagal disimpan. Silakan coba lagi.' };
+  return { message: 'Gagal menyimpan. Coba lagi.' };
 }

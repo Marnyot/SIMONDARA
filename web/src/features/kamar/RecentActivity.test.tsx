@@ -27,9 +27,7 @@ it('mempertahankan aktivitas kamar lain saat satu request gagal dan tidak memuat
       <RecentActivity rooms={rooms} />
     </MemoryRouter>,
   );
-  expect(
-    await screen.findByText('Kualitas udara berubah ke Bahaya'),
-  ).toBeVisible();
+  expect(await screen.findByText('Udara jadi Bahaya')).toBeVisible();
   expect(request).toHaveBeenCalledTimes(2);
   rerender(
     <MemoryRouter>

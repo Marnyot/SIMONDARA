@@ -34,7 +34,7 @@ export default function KelolaKamar() {
     setDeleteError(null);
     try {
       await deleteRoom(target.deviceId);
-      setNotice(`Kamar "${target.name}" dihapus beserta data historisnya.`);
+      setNotice(`"${target.name}" dihapus bersama riwayatnya.`);
       closeDialog();
     } catch (cause) {
       setDeleteError(describeRoomError(cause).message);
@@ -75,7 +75,7 @@ export default function KelolaKamar() {
                   key={room.deviceId}
                   room={room}
                   onRenamed={({ name }) =>
-                    setNotice(`Nama kamar diubah menjadi "${name}".`)
+                    setNotice(`Nama diganti jadi "${name}".`)
                   }
                   onDelete={setTarget}
                 />
@@ -83,7 +83,7 @@ export default function KelolaKamar() {
             </ul>
           ) : (
             <EmptyState title="Belum ada kamar">
-              Kamar yang ditambahkan akan tampil di sini.
+              Kamar yang kamu tambahkan muncul di sini.
             </EmptyState>
           )}
         </Card>
@@ -107,10 +107,7 @@ export default function KelolaKamar() {
           (telemetri dan peristiwa) ikut terhapus permanen dan tidak dapat
           dikembalikan.
         </p>
-        <p>
-          Jika perangkat masih mengirim data, ia akan muncul lagi sebagai
-          perangkat baru.
-        </p>
+        <p>Kalau alatnya masih menyala, nanti muncul lagi sebagai alat baru.</p>
       </ConfirmDialog>
     </>
   );

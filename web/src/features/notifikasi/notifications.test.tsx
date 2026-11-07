@@ -196,7 +196,7 @@ describe('saklar notifikasi', () => {
     setup(true);
     expect(
       await screen.findByText(
-        'Pengaturan notifikasi belum tersedia di server ini.',
+        'Server ini belum mendukung pengaturan notifikasi.',
       ),
     ).toBeVisible();
     expect(

@@ -43,9 +43,7 @@ describe('bisukan alarm', () => {
       screen.getByRole('button', { name: 'Membisukan alarm…' }),
     ).toBeDisabled();
     await act(async () => resolve());
-    expect(screen.getByRole('status')).toHaveTextContent(
-      'Perintah bisukan alarm terkirim',
-    );
+    expect(screen.getByRole('status')).toHaveTextContent('Perintah terkirim');
   });
   it('menampilkan kegagalan dan mengizinkan retry', async () => {
     const sendCommand = vi
@@ -92,7 +90,7 @@ it('mengaktifkan kembali alarm yang dibisukan dan menunggu konfirmasi', async ()
   const { rerender } = render(view(muted));
   await userEvent.click(screen.getByRole('button', { name: 'Aktifkan alarm' }));
   expect(value.sendCommand).toHaveBeenCalledWith({ mute: 0 });
-  expect(screen.getByText('Menunggu konfirmasi perangkat…')).toBeVisible();
+  expect(screen.getByText('Menunggu balasan alat…')).toBeVisible();
   rerender(view(value));
   expect(screen.getByRole('button', { name: 'Bisukan alarm' })).toBeEnabled();
 });

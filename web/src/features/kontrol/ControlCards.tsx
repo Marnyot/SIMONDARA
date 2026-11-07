@@ -7,13 +7,13 @@ import { StatusDot } from '../../components/ui/StatusDot';
 import { Toggle } from '../../components/ui/Toggle';
 import styles from './kontrol.module.css';
 
-export const MANUAL_HINT = 'Ubah ke mode Manual untuk mengendalikan';
+export const MANUAL_HINT = 'Pindah ke mode Manual untuk mengatur sendiri';
 
 function PendingNote() {
   return (
     <span className={styles.pending}>
       <span className={styles.spinner} aria-hidden="true" />
-      Menunggu konfirmasi perangkat…
+      Menunggu balasan alat…
     </span>
   );
 }
@@ -79,7 +79,7 @@ export function SwitchCard({
     <Card className={styles.card} data-disabled={disabled || undefined}>
       <CardHeading
         title={title}
-        status={`Status perangkat: ${(actual ?? checked) ? onLabel : 'Mati'}`}
+        status={`Di alat: ${(actual ?? checked) ? onLabel : 'Mati'}`}
         pending={pending}
         aside={
           <Toggle
@@ -128,7 +128,7 @@ export function ModeCard({
       <CardHeading
         title="Mode Sistem"
         headingTag="h2"
-        status={`Mode perangkat: ${actual === 0 ? 'Otomatis' : 'Manual'}`}
+        status={`Di alat: ${actual === 0 ? 'Otomatis' : 'Manual'}`}
         pending={pending}
       />
       <SegmentedControl
@@ -147,7 +147,7 @@ export function ModeCard({
             <strong className={styles.danger}>merah</strong> saat Bahaya.
           </>
         ) : (
-          'Kipas, LED, dan buzzer dikendalikan langsung dari aplikasi ini.'
+          'Kipas, LED, dan buzzer kamu atur sendiri dari sini.'
         )}
       </p>
     </Card>
@@ -183,7 +183,7 @@ export function LedCard({
     >
       <CardHeading
         title="LED Indikator"
-        status={`Status perangkat: ${LED_OPTIONS[actual ?? value].label}`}
+        status={`Di alat: ${LED_OPTIONS[actual ?? value].label}`}
         pending={pending}
         aside={
           <span

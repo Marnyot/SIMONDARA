@@ -8,9 +8,7 @@ type Result<T> = { data: T[]; error: string | null; key: string };
 /** The exact window that was requested, in epoch ms; charts use it as their time axis. */
 export type HistoryWindow = { from: number; to: number };
 const message = (cause: unknown) =>
-  cause instanceof Error
-    ? cause.message
-    : 'Data gagal dimuat. Silakan coba lagi.';
+  cause instanceof Error ? cause.message : 'Data gagal dimuat. Coba lagi.';
 
 export function useHistory(
   deviceId: string,

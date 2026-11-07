@@ -17,9 +17,7 @@ export function LiveProvider({ children }: { children: ReactNode }) {
     const controller = new AbortController();
     const initialTimeout = window.setTimeout(() => {
       if (!disposed)
-        setError(
-          'Data perangkat belum tersedia. Periksa koneksi server lalu coba lagi.',
-        );
+        setError('Data alat belum masuk. Cek koneksi server, lalu coba lagi.');
     }, 12000);
     api
       .rooms(AbortSignal.any([controller.signal, AbortSignal.timeout(12000)]))
@@ -32,9 +30,7 @@ export function LiveProvider({ children }: { children: ReactNode }) {
       .catch((cause: unknown) => {
         if (!disposed && !streamHasRooms)
           setError(
-            cause instanceof Error
-              ? cause.message
-              : 'Gagal memuat data perangkat.',
+            cause instanceof Error ? cause.message : 'Data alat gagal dimuat.',
           );
       });
     const connect = () => {

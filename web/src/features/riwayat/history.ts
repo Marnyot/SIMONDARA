@@ -28,12 +28,12 @@ export function historyWindow(range: HistoryRange, now = new Date()) {
 export function describeEvent(event: Event) {
   if (event.type === 'status') {
     return {
-      text: `Kualitas udara berubah ke ${STATUS[event.value].label}`,
+      text: `Udara jadi ${STATUS[event.value].label}`,
       color: STATUS[event.value].color,
     };
   }
   return {
-    text: event.value ? 'Perangkat terhubung kembali' : 'Perangkat terputus',
+    text: event.value ? 'Alat tersambung lagi' : 'Alat terputus',
     color: event.value ? 'var(--color-safe)' : 'var(--color-danger)',
   };
 }
