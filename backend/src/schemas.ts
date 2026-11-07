@@ -5,7 +5,34 @@ export const roomNameSchema = z.string().trim().min(1).max(40);
 export const createRoomSchema = z
   .object({ deviceId: deviceIdSchema, name: roomNameSchema })
   .strict();
-export const updateRoomSchema = z.object({ name: roomNameSchema }).strict();
+export const updateRoomSchema = z
+  .object({ name: roomNameSchema.optional(), notify: z.boolean().optional() })
+  .strict()
+  .refine(
+    (value) => Object.keys(value).length > 0,
+    'Perubahan tidak boleh kosong',
+  );
+export const snoozeMinutesSchema = z
+  .number()
+  .int()
+  .refine(
+    (value) => value === 0 || (value >= 15 && value <= 1440),
+    'Jeda harus 0 atau 15–1440 menit',
+  );
+export const updateNotificationsSchema = z
+  .object({
+    enabled: z.boolean().optional(),
+    snoozeMinutes: snoozeMinutesSchema.optional(),
+  })
+  .strict()
+  .refine(
+    (value) => Object.keys(value).length > 0,
+    'Perubahan tidak boleh kosong',
+  );
+export interface NotificationSettings {
+  enabled: boolean;
+  snoozedUntil: string | null;
+}
 
 const bit = z.union([z.literal(0), z.literal(1)]);
 export const telemetrySchema = z
@@ -60,6 +87,7 @@ export interface Snapshot {
   updatedAt: string | null;
 }
 export interface Room extends Snapshot {
+  notify: boolean;
   deviceId: string;
   name: string;
   createdAt: string;

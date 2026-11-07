@@ -3,13 +3,42 @@ import { z } from 'zod';
 import type { FastifyBaseLogger } from 'fastify';
 import type { Bridge } from './bridge.js';
 import type { Config } from './config.js';
-import type { Room, Snapshot } from './schemas.js';
+import { snoozeMinutesSchema, type Room, type Snapshot } from './schemas.js';
 
 const faultComponents = [
   [1, 'Sensor suhu/kelembapan (DHT11)'],
   [2, 'Sensor gas (MQ-135)'],
   [4, 'Layar LCD'],
 ] as const;
+
+const displayTimeZone = 'Asia/Jakarta';
+const localDay = new Intl.DateTimeFormat('id-ID', {
+  timeZone: displayTimeZone,
+  year: 'numeric',
+  month: 'numeric',
+  day: 'numeric',
+});
+const localDate = new Intl.DateTimeFormat('id-ID', {
+  timeZone: displayTimeZone,
+  weekday: 'short',
+  day: 'numeric',
+  month: 'short',
+});
+const localTime = new Intl.DateTimeFormat('id-ID', {
+  timeZone: displayTimeZone,
+  hour: '2-digit',
+  minute: '2-digit',
+  hourCycle: 'h23',
+});
+
+export function formatSnoozeTime(until: string, now = new Date()): string {
+  const date = new Date(until);
+  const prefix =
+    localDay.format(date) === localDay.format(now)
+      ? ''
+      : `${localDate.format(date)} `;
+  return `${prefix}${localTime.format(date)} WIB`;
+}
 
 export function sensorText(snapshot: Snapshot): string {
   const t = snapshot.telemetry;
@@ -84,7 +113,7 @@ export class Notifications {
   }
 }
 const help =
-  'SIMONDARA\n/status [kamar] — kondisi terkini\n/kipas_on <kamar> — mode manual, kipas menyala\n/kipas_off <kamar> — mode manual, kipas mati\n/otomatis <kamar> — mode otomatis\n/help — bantuan';
+  'SIMONDARA\n/status [kamar] — kondisi terkini\n/kipas_on <kamar> — mode manual, kipas menyala\n/kipas_off <kamar> — mode manual, kipas mati\n/otomatis <kamar> — mode otomatis\n/notif_off [kamar] — matikan notifikasi\n/notif_on [kamar] — aktifkan notifikasi\n/notif_jeda [menit] — jeda global (default 60; 0 batalkan)\n/help — bantuan';
 const updatesSchema = z.array(
   z.object({
     update_id: z.number().int(),
@@ -148,15 +177,26 @@ export class Telegram {
     return rooms;
   }
   private notify() {
+    const settings = this.bridge.store.notifications();
     for (const room of this.syncRooms()) {
       for (const message of this.notifications
         .get(room.deviceId)!
         .update(room)) {
+        // Always consume transitions; suppressed messages are discarded.
+        if (!settings.enabled || settings.snoozedUntil || !room.notify)
+          continue;
         const sending = this.send(`${room.name}: ${message}`);
         this.pending.add(sending);
         void sending.finally(() => this.pending.delete(sending));
       }
     }
+  }
+  private notificationText(rooms: Room[]) {
+    const settings = this.bridge.store.notifications();
+    const disabled = rooms
+      .filter((room) => !room.notify)
+      .map((room) => room.name);
+    return `Notifikasi global: ${settings.enabled ? 'aktif' : 'mati'}.${settings.snoozedUntil ? ` Jeda sampai ${formatSnoozeTime(settings.snoozedUntil)}.` : ''}${disabled.length ? ` Notifikasi kamar mati: ${disabled.join(', ')}.` : ''}`;
   }
   async handleCommand(text: string) {
     const parsed = parseTelegramCommand(text);
@@ -167,15 +207,45 @@ export class Telegram {
       await this.send(help);
       return;
     }
+    if (command === '/notif_jeda') {
+      const minutes =
+        argument === '' ? 60 : /^\d+$/.test(argument) ? Number(argument) : NaN;
+      const parsedMinutes = snoozeMinutesSchema.safeParse(minutes);
+      if (!parsedMinutes.success) {
+        await this.send('Jeda harus 0 atau 15–1440 menit.');
+        return;
+      }
+      this.bridge.updateNotifications({ snoozeMinutes: parsedMinutes.data });
+      await this.send(this.notificationText(rooms));
+      return;
+    }
+    if (['/notif_off', '/notif_on'].includes(command) && !argument) {
+      this.bridge.updateNotifications({ enabled: command === '/notif_on' });
+      await this.send(this.notificationText(rooms));
+      return;
+    }
     if (command === '/status' && !argument) {
       await this.send(
-        rooms.length
-          ? rooms.map((room) => `${room.name}: ${statusText(room)}`).join('\n')
-          : roomListText(rooms),
+        `${
+          rooms.length
+            ? rooms
+                .map((room) => `${room.name}: ${statusText(room)}`)
+                .join('\n')
+            : roomListText(rooms)
+        }\n${this.notificationText(rooms)}`,
       );
       return;
     }
-    if (!['/status', '/kipas_on', '/kipas_off', '/otomatis'].includes(command))
+    if (
+      ![
+        '/status',
+        '/kipas_on',
+        '/kipas_off',
+        '/otomatis',
+        '/notif_off',
+        '/notif_on',
+      ].includes(command)
+    )
       return;
     const room = resolveRoom(rooms, argument);
     if (!room) {
@@ -187,7 +257,18 @@ export class Telegram {
       return;
     }
     if (command === '/status') {
-      await this.send(`${room.name}: ${statusText(room)}`);
+      await this.send(
+        `${room.name}: ${statusText(room)}\n${this.notificationText([room])}`,
+      );
+      return;
+    }
+    if (command === '/notif_off' || command === '/notif_on') {
+      const updated = this.bridge.updateRoom(room.deviceId, {
+        notify: command === '/notif_on',
+      });
+      await this.send(
+        `${room.name}: Notifikasi ${updated.notify ? 'aktif' : 'mati'}.`,
+      );
       return;
     }
     try {

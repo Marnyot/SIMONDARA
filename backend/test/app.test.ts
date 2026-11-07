@@ -164,6 +164,7 @@ describe('authenticated API', () => {
       {
         deviceId: 'kos-01',
         name: 'Kamar 1',
+        notify: true,
         createdAt: expect.any(String),
         online: false,
         state: null,
