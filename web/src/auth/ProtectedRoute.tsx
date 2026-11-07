@@ -1,4 +1,4 @@
-import { Navigate, Outlet } from 'react-router-dom';
+import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { useAuth } from './context';
 import { useLive } from '../live/context';
@@ -7,6 +7,7 @@ import { Splash } from '../components/Splash';
 import { ErrorState } from '../components/ui/ErrorState';
 function DataGate() {
   const { ready, error, retry } = useLive();
+  const { pathname } = useLocation();
   const [shownReady, setShownReady] = useState(false);
   useEffect(() => {
     if (!ready) return;
@@ -16,6 +17,7 @@ function DataGate() {
     );
     return () => window.clearTimeout(timer);
   }, [ready]);
+  if (pathname === '/' && !error) return <Outlet />;
   if (ready && shownReady) return <Outlet />;
   if (!ready && error) return <ErrorState message={error} onRetry={retry} />;
   return <Splash phase={ready ? 'ready' : 'snapshot'} />;

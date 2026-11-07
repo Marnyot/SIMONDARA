@@ -13,6 +13,51 @@ export const newRoomUrl = (deviceId: string) =>
 export const roomStatus = ({ telemetry }: Pick<Room, 'telemetry'>) =>
   telemetry ? airStatus(telemetry) : null;
 
+/** Attention priority is independent of arrival order from the live store. */
+export function roomPriority(room: Room): number {
+  if (roomStatus(room) === 2) return 0;
+  if (!room.online) return 1;
+  if (room.state?.fault) return 2;
+  if (roomStatus(room) === 1) return 3;
+  return roomStatus(room) === 0 ? 4 : 5;
+}
+
+export function sortRooms(rooms: Room[]): Room[] {
+  return [...rooms].sort(
+    (a, b) =>
+      roomPriority(a) - roomPriority(b) ||
+      a.name.localeCompare(b.name, 'id', { numeric: true }) ||
+      a.deviceId.localeCompare(b.deviceId),
+  );
+}
+
+/** Air counts include last readings; connection and faults are separate signals. */
+export function countRooms(rooms: Room[]) {
+  const counts = {
+    safe: 0,
+    warning: 0,
+    danger: 0,
+    offline: 0,
+    fault: 0,
+    pending: 0,
+  };
+  for (const room of rooms) {
+    const status = roomStatus(room);
+    counts[
+      status === 2
+        ? 'danger'
+        : status === 1
+          ? 'warning'
+          : status === 0
+            ? 'safe'
+            : 'pending'
+    ]++;
+    if (!room.online) counts.offline++;
+    if (room.state?.fault) counts.fault++;
+  }
+  return counts;
+}
+
 export function summarizeRooms(rooms: Room[]): string {
   if (rooms.length === 0) return 'Belum ada kamar terdaftar';
   let danger = 0;

@@ -1,26 +1,26 @@
 .range {
-  margin-bottom: 14px;
+  margin-bottom: var(--space-4);
 }
 .range [role='radiogroup'] {
-  background: #e9f0ed;
+  background: var(--color-surface-hover);
 }
 .range [role='radio'][aria-checked='true'] {
-  background: var(--color-surface);
-  color: var(--color-primary);
+  background: transparent;
+  color: var(--color-on-primary);
 }
 .grid {
   display: grid;
-  gap: 14px;
+  gap: var(--space-4);
 }
 .chartCard,
 .events {
-  padding: 16px;
+  padding: var(--space-4);
 }
 .cardHeader {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: var(--space-3);
 }
 .cardHeader h2,
 .events h2 {
@@ -35,14 +35,14 @@
   text-align: right;
 }
 .chartState {
-  margin-top: 16px;
+  margin-top: var(--space-4);
 }
 .legend {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px 16px;
+  gap: var(--space-2) var(--space-4);
   color: var(--color-muted);
-  margin: 6px 0 0;
+  margin: var(--space-2) 0 0;
   font-size: 11px;
 }
 .legend > span {
@@ -67,7 +67,7 @@
 .events ul {
   list-style: none;
   padding: 0;
-  margin: 14px 0 0;
+  margin: var(--space-4) 0 0;
   max-height: 300px;
   overflow-y: auto;
   scrollbar-width: thin;
@@ -75,10 +75,10 @@
 .events li {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
-  gap: 10px;
+  gap: var(--space-3);
   align-items: baseline;
   font-size: 13px;
-  margin-top: 10px;
+  margin-top: var(--space-3);
 }
 .events li:first-child {
   margin-top: 0;
@@ -92,8 +92,8 @@
   .toolbar {
     display: flex;
     align-items: center;
-    gap: 24px;
-    margin-bottom: 20px;
+    gap: var(--space-6);
+    margin-bottom: var(--space-5);
   }
   .toolbar > header {
     flex: 1;
@@ -106,12 +106,12 @@
   }
   .grid {
     grid-template-columns: repeat(6, minmax(0, 1fr));
-    gap: 20px;
+    gap: var(--space-5);
     align-items: start;
   }
   .chartCard,
   .events {
-    padding: 24px;
+    padding: var(--space-6);
   }
   .chartCard {
     grid-column: span 3;
@@ -132,4 +132,59 @@
   .legend {
     font-size: 12px;
   }
+}
+.events li {
+  padding-block: var(--space-3);
+  margin: 0;
+  border-bottom: 1px solid var(--color-border);
+}
+.events li:last-child {
+  border: 0;
+}
+.cardHeader h2,
+.events h2 {
+  font-size: var(--font-size-lead);
+}
+@media (min-width: 1024px) {
+  .grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .chartCard,
+  .gas {
+    grid-column: auto;
+  }
+  .gas {
+    grid-column: 1 / -1;
+    grid-row: 1;
+  }
+  .events {
+    grid-column: 1 / -1;
+  }
+  .events ul {
+    max-height: 360px;
+  }
+}
+.chartCard {
+  --chart-height: 200px;
+}
+@media (min-width: 1024px) {
+  .chartCard {
+    --chart-height: 240px;
+  }
+  .gas {
+    --chart-height: 280px;
+  }
+}
+
+.reading {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 3px;
+  color: var(--color-heading);
+  font-variant-numeric: tabular-nums;
+  font-size: 1rem;
+}
+.reading small {
+  color: var(--color-muted);
+  font-size: 0.75rem;
 }

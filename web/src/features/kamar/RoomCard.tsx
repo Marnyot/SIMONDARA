@@ -1,8 +1,9 @@
-import { memo } from 'react';
+import { lazy, memo, Suspense } from 'react';
 import { ChevronRight, Fan } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import type { Room } from '../../api/types';
-import { Badge } from '../../components/ui/Badge';
+import { LevelMeter } from '../../components/LevelMeter';
+import { SensorNumber } from '../../components/ui/SensorNumber';
 import { StatusDot } from '../../components/ui/StatusDot';
 import { FaultBadge } from '../../components/FaultBadge';
 import { STATUS, unreliableReadings } from '../../live/status';
@@ -13,14 +14,23 @@ import {
   useNow,
 } from '../kontrol/time';
 import { roomStatus, roomUrl } from './rooms';
-import styles from './kamar.module.css';
+import styles from './DaftarKamar.module.css';
 
-function LastData({ at }: { at: string | null }) {
+const RoomSparkline = lazy(() => import('./RoomSparkline'));
+
+function LastData({ at, online }: { at: string | null; online: boolean }) {
   const now = useNow();
-  if (!at) return <p className={styles.lastData}>Belum pernah mengirim data</p>;
+
   return (
-    <p className={styles.lastData} title={formatAbsoluteTime(at)}>
-      Data terakhir {formatRelativeTime(at, now)}
+    <p
+      className={styles.lastData}
+      title={at ? formatAbsoluteTime(at) : undefined}
+    >
+      <StatusDot color={online ? 'var(--color-safe)' : 'var(--color-danger)'} />
+      {online ? 'Terhubung' : 'Terputus'} ·{' '}
+      {at
+        ? `Data terakhir ${formatRelativeTime(at, now)}`
+        : 'Belum pernah mengirim data'}
     </p>
   );
 }
@@ -40,7 +50,7 @@ function Reading({
     <div data-unreliable={unreliable || undefined}>
       <dt>{label}</dt>
       <dd>
-        {value} <span>{unit}</span>
+        <SensorNumber value={value} /> <span>{unit}</span>
       </dd>
       {unreliable ? <dd className={styles.unreliable}>Tidak andal</dd> : null}
     </div>
@@ -54,31 +64,35 @@ function RoomCardBase({ room }: { room: Room }) {
   return (
     <article
       className={styles.roomCard}
+      data-pressable
       data-status={status ?? undefined}
       data-online={online}
     >
-      <div className={styles.roomTop}>
-        <h2>
-          <Link className={styles.roomLink} to={roomUrl(deviceId)}>
-            {name}
-          </Link>
-        </h2>
-        {online ? (
-          <span className={styles.link}>
-            <StatusDot color="var(--color-safe)" />
-            Terhubung
-          </span>
+      <div className={styles.identity}>
+        <div className={styles.roomTop}>
+          <h2>
+            <Link
+              viewTransition
+              className={styles.roomLink}
+              to={roomUrl(deviceId)}
+            >
+              {name}
+            </Link>
+          </h2>
+        </div>
+        <LastData at={updatedAt} online={online} />
+        {status === null ? (
+          <span className={styles.waiting}>Belum ada data</span>
         ) : (
-          <Badge tone="danger">
-            <StatusDot />
-            Terputus
-          </Badge>
+          <LevelMeter
+            name={`Udara ${name}`}
+            status={status}
+            stale={!online}
+            label={`${!online ? 'Terakhir: ' : ''}${STATUS[status].label}`}
+          />
         )}
+        <FaultBadge fault={state?.fault ?? 0} />
       </div>
-      <p className={styles.roomStatus}>
-        {status === null ? 'Belum ada data' : STATUS[status].label}
-      </p>
-      <FaultBadge fault={state?.fault ?? 0} />
       {telemetry ? (
         <dl className={styles.readings}>
           <Reading
@@ -103,7 +117,13 @@ function RoomCardBase({ room }: { room: Room }) {
       ) : (
         <p className={styles.waiting}>Menunggu data sensor dari perangkat.</p>
       )}
-      {online ? null : <LastData at={updatedAt} />}
+      <Suspense
+        fallback={
+          <div className={styles.sparklinePlaceholder} aria-hidden="true" />
+        }
+      >
+        <RoomSparkline deviceId={deviceId} name={name} />
+      </Suspense>
       <div className={styles.roomBottom}>
         <span>
           <Fan size={16} aria-hidden="true" />

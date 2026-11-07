@@ -34,6 +34,16 @@ describe('request riwayat', () => {
     unmount();
     expect(latestSignal.aborted).toBe(true);
   });
+  it('mengembalikan from/to yang sama persis dengan request sebagai domain grafik', async () => {
+    const request = vi.spyOn(api, 'history').mockResolvedValue({ points: [] });
+    const { result } = renderHook(() => useHistory('kos-01', '24h'));
+    expect(result.current.from).toBeNull();
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    const [, from, to] = request.mock.calls[0]!;
+    expect(result.current.from).toBe(Date.parse(from));
+    expect(result.current.to).toBe(Date.parse(to));
+    expect(result.current.to! - result.current.from!).toBe(86_400_000);
+  });
   it('menangani error dan retry, serta membatalkan request peristiwa saat unmount', async () => {
     const request = vi
       .spyOn(api, 'events')
@@ -51,4 +61,26 @@ describe('request riwayat', () => {
     unmount();
     expect(signal.aborted).toBe(true);
   });
+});
+
+it('sparkline menyegarkan data hanya setiap lima menit saat tab terlihat', async () => {
+  vi.useFakeTimers();
+  const request = vi.spyOn(api, 'history').mockResolvedValue({ points: [] });
+  const { unmount } = renderHook(() => useHistory('kos-01', '24h', 300_000));
+  try {
+    await act(async () => {});
+    await act(async () => vi.advanceTimersByTime(299_999));
+    expect(request).toHaveBeenCalledTimes(1);
+    await act(async () => vi.advanceTimersByTime(1));
+    expect(request).toHaveBeenCalledTimes(2);
+    vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('hidden');
+    await act(async () => vi.advanceTimersByTime(300_000));
+    expect(request).toHaveBeenCalledTimes(2);
+    unmount();
+    await act(async () => vi.advanceTimersByTime(300_000));
+    expect(request).toHaveBeenCalledTimes(2);
+  } finally {
+    unmount();
+    vi.useRealTimers();
+  }
 });

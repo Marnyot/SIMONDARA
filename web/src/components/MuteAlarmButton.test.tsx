@@ -85,3 +85,14 @@ describe('bisukan alarm', () => {
     expect(screen.getByRole('button', { name: 'Bisukan alarm' })).toBeEnabled();
   });
 });
+
+it('mengaktifkan kembali alarm yang dibisukan dan menunggu konfirmasi', async () => {
+  const value = live();
+  const muted = { ...value, state: { ...value.state!, mute: 1 as const } };
+  const { rerender } = render(view(muted));
+  await userEvent.click(screen.getByRole('button', { name: 'Aktifkan alarm' }));
+  expect(value.sendCommand).toHaveBeenCalledWith({ mute: 0 });
+  expect(screen.getByText('Menunggu konfirmasi perangkat…')).toBeVisible();
+  rerender(view(value));
+  expect(screen.getByRole('button', { name: 'Bisukan alarm' })).toBeEnabled();
+});

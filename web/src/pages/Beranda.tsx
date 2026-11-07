@@ -1,96 +1,88 @@
-import {
-  lazy,
-  Suspense,
-  useEffect,
-  useState,
-  useSyncExternalStore,
-} from 'react';
+import { SensorNumber } from '../components/ui/SensorNumber';
+import { lazy, Suspense } from 'react';
+import { RoomHeader } from '../components/RoomHeader';
+import { Link } from 'react-router-dom';
 import { Droplet, Thermometer, Wind } from 'lucide-react';
-import { PageHeader } from '../components/PageHeader';
+import { GasGauge } from '../components/GasGauge';
+import { Badge } from '../components/ui/Badge';
+import { StatusDot } from '../components/ui/StatusDot';
+import { LevelMeter } from '../components/LevelMeter';
+import {
+  assessTemperature,
+  assessHumidity,
+  assessGas,
+} from '../features/beranda/sensorAssessment';
 import { FaultBadge } from '../components/FaultBadge';
 import { MuteAlarmButton } from '../components/MuteAlarmButton';
 import { Card } from '../components/ui/Card';
 import { EmptyState } from '../components/ui/EmptyState';
 import { ErrorState } from '../components/ui/ErrorState';
+import { LoadingSwap } from '../components/ui/LoadingSwap';
 import { Skeleton } from '../components/ui/Skeleton';
 import { useRoom } from '../live/context';
-import {
-  airStatus,
-  gasStatus,
-  STATUS,
-  unreliableReadings,
-} from '../live/status';
-import { relativeUpdate, statusAdvice } from '../features/beranda/statusAdvice';
-import { formatDateTime, formatNumber } from '../features/riwayat/history';
+import { airStatus, STATUS, unreliableReadings } from '../live/status';
+import { statusAdvice } from '../features/beranda/statusAdvice';
+import { bucketInterval, formatNumber } from '../features/riwayat/history';
+import { roomUrl } from '../features/kamar/rooms';
 import { useHistory } from '../features/riwayat/useHistory';
 import styles from './Beranda.module.css';
 
 const SensorChart = lazy(() => import('../features/riwayat/SensorChart'));
 
-const desktopQuery = '(min-width: 1024px)';
-const subscribeDesktop = (callback: () => void) => {
-  const query = window.matchMedia(desktopQuery);
-  query.addEventListener('change', callback);
-  return () => query.removeEventListener('change', callback);
-};
-const isDesktop = () => window.matchMedia(desktopQuery).matches;
-
 const UNRELIABLE_NOTE = 'Sensor gangguan, nilai tidak andal';
-
-function UpdatedAt({ at }: { at: string }) {
-  const [now, setNow] = useState(() => Date.now());
-  useEffect(() => {
-    const timer = window.setInterval(() => setNow(Date.now()), 10000);
-    return () => window.clearInterval(timer);
-  }, []);
-  return (
-    <time dateTime={at} title={formatDateTime(at)}>
-      {relativeUpdate(at, now)}
-    </time>
-  );
-}
 
 function GasTrend() {
   const { deviceId } = useRoom();
-  const { points, error, loading, retry } = useHistory(deviceId, '24h');
+  const { points, from, to, error, loading, retry } = useHistory(
+    deviceId,
+    '24h',
+  );
   return (
     <Card className={styles.trend}>
       <h2>Tren Kadar Gas (24 jam)</h2>
-      {loading ? (
-        <Skeleton height={150} label="Memuat tren kadar gas" />
-      ) : error ? (
-        <ErrorState message={error} onRetry={retry} />
-      ) : points.length === 0 ? (
-        <EmptyState title="Belum ada riwayat gas">
-          Pengukuran akan muncul setelah sensor mengirim data.
-        </EmptyState>
-      ) : (
-        <Suspense
-          fallback={<Skeleton height={150} label="Memuat grafik gas" />}
-        >
-          <SensorChart points={points} metric="ppm" />
-        </Suspense>
-      )}
+      <LoadingSwap
+        loading={loading}
+        skeleton={<Skeleton height={194} label="Memuat tren kadar gas" />}
+      >
+        {error ? (
+          <ErrorState message={error} onRetry={retry} />
+        ) : points.length === 0 || from === null || to === null ? (
+          <EmptyState title="Belum ada riwayat gas">
+            Pengukuran akan muncul setelah sensor mengirim data.
+          </EmptyState>
+        ) : (
+          <Suspense
+            fallback={<Skeleton height={150} label="Memuat grafik gas" />}
+          >
+            <SensorChart
+              points={points}
+              metric="ppm"
+              from={from}
+              to={to}
+              intervalMs={bucketInterval('24h')}
+              zoomAction={
+                <Link
+                  viewTransition
+                  to={`${roomUrl(deviceId, 'riwayat')}?range=1h`}
+                >
+                  Lihat 1 Jam
+                </Link>
+              }
+            />
+          </Suspense>
+        )}
+      </LoadingSwap>
     </Card>
   );
 }
 
 export default function Beranda() {
-  const { name, telemetry, state, online, updatedAt } = useRoom();
-  const desktop = useSyncExternalStore(
-    subscribeDesktop,
-    isDesktop,
-    () => false,
-  );
+  const { name, telemetry, state, online } = useRoom();
   const status = telemetry ? airStatus(telemetry) : null;
   const unreliable = unreliableReadings(state);
   return (
     <>
-      <PageHeader
-        title={name}
-        subtitle="Pantauan kualitas udara ruangan secara langsung"
-        online={online}
-      />
+      <RoomHeader />
       <div className={styles.layout}>
         {!online ? (
           <p className={styles.offline} role="status">
@@ -100,11 +92,6 @@ export default function Beranda() {
               : 'Menunggu perangkat terhubung untuk menerima data.'}
           </p>
         ) : null}
-        {state?.fault ? (
-          <div className={styles.full}>
-            <FaultBadge fault={state.fault} />
-          </div>
-        ) : null}
         {telemetry && status !== null ? (
           <>
             <section
@@ -112,101 +99,135 @@ export default function Beranda() {
               data-status={status}
               aria-labelledby="air-quality-title"
             >
-              <div>
-                <h2 id="air-quality-title">Kualitas Udara Saat Ini</h2>
-                <p className={styles.statusLabel}>{STATUS[status].label}</p>
+              <div className={styles.condition}>
+                <h2 id="air-quality-title">Kondisi udara</h2>
+                <p className={styles.summary}>
+                  Udara di {name} sedang{' '}
+                  <strong className={styles.statusLabel}>
+                    {status === 2
+                      ? 'berbahaya'
+                      : status === 1
+                        ? 'perlu diwaspadai'
+                        : 'aman'}
+                  </strong>
+                  .
+                </p>
+                <div className={styles.mainReading}>
+                  <span className={styles.readingLabel}>Kadar gas</span>
+                  <div className={styles.numberUnit}>
+                    <span className={styles.mainValue}>
+                      <SensorNumber value={formatNumber(telemetry.ppm, 0)} />
+                    </span>
+                    <span className={styles.mainUnit}>ppm</span>
+                  </div>
+                </div>
                 <p className={styles.advice}>{statusAdvice(telemetry)}</p>
+                {!online || unreliable.t || unreliable.h || unreliable.ppm ? (
+                  <p className={styles.source}>
+                    Berdasarkan data terakhir.{' '}
+                    {!online
+                      ? 'Perangkat terputus; kondisi saat ini belum dapat dipastikan.'
+                      : 'Sensor mengalami gangguan; periksa perangkat sebelum mengandalkan pengukuran.'}
+                  </p>
+                ) : null}
                 <MuteAlarmButton />
               </div>
-              <div
-                className={styles.scale}
-                aria-label={`Kualitas udara ${STATUS[status].label}`}
-              >
-                <div className={styles.segments} aria-hidden="true">
-                  {[0, 1, 2].map((item) => (
-                    <span
-                      key={item}
-                      style={{ background: STATUS[item as 0 | 1 | 2].color }}
-                    >
-                      {status === item ? <i /> : null}
-                    </span>
-                  ))}
-                </div>
-                <div className={styles.scaleLabels} aria-hidden="true">
-                  <span>Aman</span>
-                  <span>Waspada</span>
-                  <span>Bahaya</span>
-                </div>
-              </div>
-            </section>
-            <Card className={styles.metric} data-unreliable={unreliable.t}>
-              <h2>
-                <Thermometer size={19} aria-hidden="true" />
-                Suhu
-              </h2>
-              <p className={styles.value}>
-                {formatNumber(telemetry.t)} <span>°C</span>
-              </p>
-              <p className={styles.source}>
-                {unreliable.t ? UNRELIABLE_NOTE : 'Sensor DHT11'}
-              </p>
-            </Card>
-            <Card className={styles.metric} data-unreliable={unreliable.h}>
-              <h2>
-                <Droplet size={19} aria-hidden="true" />
-                Kelembapan
-              </h2>
-              <p className={styles.value}>
-                {formatNumber(telemetry.h)} <span>%</span>
-              </p>
-              <p className={styles.source}>
-                {unreliable.t ? UNRELIABLE_NOTE : 'Sensor DHT11'}
-              </p>
-            </Card>
-            <Card
-              className={`${styles.metric} ${styles.gas}`}
-              data-unreliable={unreliable.ppm}
-            >
-              <h2>
-                <Wind size={20} aria-hidden="true" />
-                Kadar Gas
-              </h2>
-              <p className={styles.value}>
-                {formatNumber(telemetry.ppm, 0)} <span>ppm</span>
-              </p>
-              <div
-                role="meter"
-                aria-label="Kadar gas"
-                aria-valuenow={telemetry.ppm}
-                aria-valuemin={0}
-                aria-valuemax={Math.max(3000, telemetry.ppm)}
-                aria-valuetext={`${formatNumber(telemetry.ppm, 0)} ppm`}
-                className={styles.gasMeter}
-              >
-                <span
-                  style={{
-                    width: `${Math.min(100, telemetry.ppm / 30)}%`,
-                    background: STATUS[gasStatus(telemetry.ppm)].color,
-                  }}
+              <div className={styles.gauge}>
+                <GasGauge
+                  ppm={telemetry.ppm}
+                  unreliable={unreliable.ppm}
+                  showReadout={false}
                 />
               </div>
-              <p className={styles.source}>
-                {unreliable.ppm
-                  ? UNRELIABLE_NOTE
-                  : 'Ambang kuning 1.000 ppm, merah 2.000 ppm'}
-              </p>
-            </Card>
+            </section>
+            <section className={styles.air} aria-labelledby="air-title">
+              <h2 id="air-title" className={styles.groupTitle}>
+                Udara
+              </h2>
+              <Card className={styles.sensorPanel}>
+                <dl className={styles.sensors}>
+                  {[
+                    {
+                      key: 't' as const,
+                      title: 'Suhu',
+                      icon: Thermometer,
+                      unit: '°C',
+                      assessment: assessTemperature(telemetry.t),
+                    },
+                    {
+                      key: 'h' as const,
+                      title: 'Kelembapan',
+                      icon: Droplet,
+                      unit: '%',
+                      assessment: assessHumidity(telemetry.h),
+                    },
+                    {
+                      key: 'ppm' as const,
+                      title: 'Kadar gas',
+                      icon: Wind,
+                      unit: 'ppm',
+                      assessment: assessGas(telemetry.ppm),
+                    },
+                  ].map(({ key, title, icon: Icon, unit, assessment }) => (
+                    <div
+                      key={key}
+                      className={styles.sensorRow}
+                      data-unreliable={unreliable[key]}
+                    >
+                      <dt>
+                        <Icon size={20} aria-hidden="true" />
+                        {title}
+                      </dt>
+                      <dd className={styles.value}>
+                        <SensorNumber
+                          value={formatNumber(
+                            telemetry[key],
+                            key === 'ppm' ? 0 : 1,
+                          )}
+                        />{' '}
+                        <span>{unit}</span>
+                      </dd>
+                      <dd className={styles.assessment}>
+                        {unreliable[key] ? (
+                          <span>Tidak andal</span>
+                        ) : (
+                          <LevelMeter
+                            name={title}
+                            status={assessment.status}
+                            label={assessment.label}
+                            stale={!online}
+                          />
+                        )}
+                      </dd>
+                      {unreliable[key] ? (
+                        <dd className={styles.sensorNote}>{UNRELIABLE_NOTE}</dd>
+                      ) : null}
+                    </div>
+                  ))}
+                </dl>
+              </Card>
+            </section>
           </>
         ) : (
           <Card className={styles.full}>
             <EmptyState title="Belum ada pengukuran">
-              Menunggu data dari sensor DHT11 dan sensor gas.
+              Menunggu data suhu, kelembapan, dan kadar gas dari perangkat.
             </EmptyState>
           </Card>
         )}
-        <div className={styles.bottom}>
+        <section className={styles.devices} aria-labelledby="devices-title">
+          <h2 id="devices-title" className={styles.groupTitle}>
+            Perangkat
+          </h2>
           <Card className={styles.actuators}>
-            <h2>Status Aktuator</h2>
+            <div className={styles.connection}>
+              <span>Koneksi</span>
+              <Badge tone={online ? 'safe' : 'danger'}>
+                <StatusDot />
+                {online ? 'Terhubung' : 'Terputus'}
+              </Badge>
+            </div>
+            <FaultBadge fault={state?.fault ?? 0} />
             {state ? (
               <dl>
                 <div className={styles.ledRow}>
@@ -246,15 +267,8 @@ export default function Beranda() {
             )}
             {!telemetry ? <MuteAlarmButton /> : null}
           </Card>
-          {desktop ? <GasTrend /> : null}
-        </div>
-        <p className={styles.updated}>
-          {updatedAt ? (
-            <UpdatedAt at={updatedAt} />
-          ) : (
-            'Belum ada pembaruan perangkat'
-          )}
-        </p>
+        </section>
+        <GasTrend />
       </div>
     </>
   );

@@ -7,6 +7,7 @@ import { Brand } from '../components/Brand';
 import { Splash } from '../components/Splash';
 import { ErrorState } from '../components/ui/ErrorState';
 import { Button } from '../components/ui/Button';
+import { TextField } from '../components/ui/TextField';
 import styles from './Login.module.css';
 export default function Login() {
   const { status, error: authError, login, retry } = useAuth();
@@ -46,30 +47,21 @@ export default function Login() {
           />
         ) : (
           <form onSubmit={(event) => void submit(event)}>
-            <label htmlFor="password">Kata sandi pengelola</label>
-            <div className={styles.inputGroup}>
-              <LockKeyhole size={18} aria-hidden="true" />
-              <input
-                id="password"
-                name="password"
-                type="password"
-                autoComplete="current-password"
-                required
-                maxLength={1024}
-                value={password}
-                onChange={(event) => setPassword(event.target.value)}
-                aria-invalid={Boolean(error)}
-                aria-describedby={error ? 'login-error' : undefined}
-                disabled={loading}
-              />
-            </div>
-            {error ? (
-              <p id="login-error" role="alert" className={styles.error}>
-                {error}
-              </p>
-            ) : null}
+            <TextField
+              label="Kata sandi pengelola"
+              icon={<LockKeyhole size={18} aria-hidden="true" />}
+              name="password"
+              type="password"
+              autoComplete="current-password"
+              required
+              maxLength={1024}
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              error={error}
+              disabled={loading}
+            />
             <Button type="submit" loading={loading} disabled={!password}>
-              {loading ? 'Memeriksa...' : 'Masuk'}
+              {loading ? 'Memeriksa…' : 'Masuk'}
             </Button>
           </form>
         )}

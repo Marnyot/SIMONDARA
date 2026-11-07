@@ -1,21 +1,22 @@
 import { X } from 'lucide-react';
-import { PageHeader } from '../components/PageHeader';
+import { MuteAlarmButton } from '../components/MuteAlarmButton';
+import { RoomHeader } from '../components/RoomHeader';
 import { Card } from '../components/ui/Card';
 import { EmptyState } from '../components/ui/EmptyState';
 import {
   LedCard,
   MANUAL_HINT,
   ModeCard,
-  MuteCard,
   SwitchCard,
 } from '../features/kontrol/ControlCards';
 import { ConnectionCard, LcdCard } from '../features/kontrol/StatusCards';
 import { useDeviceCommands } from '../features/kontrol/useDeviceCommands';
 import { useRoom } from '../live/context';
 import styles from './Kontrol.module.css';
+import controlStyles from '../features/kontrol/kontrol.module.css';
 
 export default function Kontrol() {
-  const { name, state, telemetry, online, connection, updatedAt, sendCommand } =
+  const { state, telemetry, online, connection, updatedAt, sendCommand } =
     useRoom();
   const { values, pending, error, send, dismissError } = useDeviceCommands(
     state,
@@ -27,25 +28,20 @@ export default function Kontrol() {
   const manual = state?.mode === 1 && !pending.mode;
   const actuatorDisabled = offline || !manual;
   const actuatorHint = !offline && !manual ? MANUAL_HINT : null;
-  const danger = state?.status === 2;
 
   const muteCard = values ? (
-    <MuteCard
-      muted={values.mute === 1}
-      danger={danger}
-      onChange={(muted) => send('mute', muted ? 1 : 0)}
-      disabled={offline}
-      pending={Boolean(pending.mute)}
-    />
+    <Card>
+      <h3 className={controlStyles.title}>Alarm perangkat</h3>
+      <p className={styles.sectionHint}>
+        Bisukan alarm sementara sampai kualitas udara kembali Aman.
+      </p>
+      <MuteAlarmButton alwaysShow />
+    </Card>
   ) : null;
 
   return (
     <>
-      <PageHeader
-        title={name}
-        subtitle="Kirim perintah ke NodeMCU dari jarak jauh"
-        online={online}
-      />
+      <RoomHeader />
       {offline ? (
         <p className={styles.banner} role="status">
           {!online
@@ -68,11 +64,12 @@ export default function Kontrol() {
       ) : null}
       <div className={styles.grid}>
         <div className={styles.column}>
+          <h2 className={styles.sectionTitle}>Kontrol</h2>
           {values ? (
             <>
-              {danger ? muteCard : null}
               <ModeCard
                 value={values.mode}
+                actual={state?.mode ?? values.mode}
                 onChange={(mode) => send('mode', mode)}
                 disabled={offline}
                 pending={Boolean(pending.mode)}
@@ -81,6 +78,7 @@ export default function Kontrol() {
                 title="Kipas Exhaust"
                 onLabel="Menyala"
                 checked={values.fan === 1}
+                actual={state?.fan === 1}
                 onChange={(on) => send('fan', on ? 1 : 0)}
                 disabled={actuatorDisabled}
                 pending={Boolean(pending.fan)}
@@ -90,6 +88,7 @@ export default function Kontrol() {
                 title="Buzzer"
                 onLabel="Berbunyi"
                 checked={values.buzzer === 1}
+                actual={state?.buzzer === 1}
                 onChange={(on) => send('buzzer', on ? 1 : 0)}
                 disabled={actuatorDisabled}
                 pending={Boolean(pending.buzzer)}
@@ -97,12 +96,13 @@ export default function Kontrol() {
               />
               <LedCard
                 value={values.led}
+                actual={state?.led}
                 onChange={(led) => send('led', led)}
                 disabled={actuatorDisabled}
                 pending={Boolean(pending.led)}
                 hint={actuatorHint}
               />
-              {danger ? null : muteCard}
+              {muteCard}
             </>
           ) : (
             <Card>
@@ -114,6 +114,7 @@ export default function Kontrol() {
           )}
         </div>
         <div className={styles.column}>
+          <h2 className={styles.sectionTitle}>Status perangkat</h2>
           <LcdCard
             telemetry={telemetry}
             status={state?.status ?? null}

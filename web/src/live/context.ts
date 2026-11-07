@@ -1,8 +1,15 @@
 import { createContext, useContext } from 'react';
 import type { ConnectionStatus, LiveState } from './reducer';
-import type { Command, Room } from '../api/types';
+import type {
+  Command,
+  Room,
+  Notifications,
+  NotificationsPatch,
+} from '../api/types';
 
 export interface LiveContextValue extends LiveState {
+  updateNotifications?: (input: NotificationsPatch) => Promise<Notifications>;
+  setRoomNotify?: (deviceId: string, notify: boolean) => Promise<Room>;
   error: string | null;
   retry: () => void;
   createRoom: (input: { deviceId: string; name: string }) => Promise<Room>;

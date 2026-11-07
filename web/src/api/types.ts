@@ -40,6 +40,8 @@ export const roomNameSchema = z
 export const roomSchema = snapshotSchema.extend({
   deviceId: deviceIdSchema,
   name: z.string().min(1),
+  // Older servers omit notify; hide the room switch until supported.
+  notify: z.boolean().optional(),
   createdAt: iso,
 });
 export const unregisteredDeviceSchema = z.object({
@@ -89,3 +91,22 @@ export type HistoryPoint = z.infer<typeof historyPointSchema>;
 export type Event = z.infer<typeof eventSchema>;
 export type Command = z.infer<typeof commandSchema>;
 export type HistoryBucket = '1m' | '5m' | '1h';
+
+export const notificationsSchema = z.object({
+  enabled: z.boolean(),
+  snoozedUntil: iso.nullable(),
+});
+export const notificationsPatchSchema = z
+  .object({
+    enabled: z.boolean().optional(),
+    snoozeMinutes: z
+      .union([z.literal(0), z.number().int().min(15).max(1440)])
+      .optional(),
+  })
+  .strict()
+  .refine(
+    (value) => value.enabled !== undefined || value.snoozeMinutes !== undefined,
+    'Pengaturan wajib diisi.',
+  );
+export type Notifications = z.infer<typeof notificationsSchema>;
+export type NotificationsPatch = z.infer<typeof notificationsPatchSchema>;

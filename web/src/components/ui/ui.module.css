@@ -13,12 +13,17 @@
   min-height: 44px;
   border: 1px solid transparent;
   border-radius: var(--radius-control);
-  padding: 10px 18px;
+  padding: var(--space-3) var(--space-5);
   background: var(--color-primary);
-  color: white;
+  color: var(--color-on-primary);
   font-weight: 600;
   text-decoration: none;
   cursor: pointer;
+}
+.button {
+  transition:
+    background-color 160ms var(--ease-out),
+    color 160ms var(--ease-out);
 }
 .button:hover {
   background: var(--color-primary-hover);
@@ -27,21 +32,43 @@
   background: var(--color-primary-soft);
   color: var(--color-primary);
 }
+.button[data-variant='secondary']:hover {
+  background: color-mix(
+    in srgb,
+    var(--color-primary) 16%,
+    var(--color-surface)
+  );
+}
 .button[data-variant='ghost'] {
   background: transparent;
   color: var(--color-muted);
 }
+.button[data-variant='ghost']:hover {
+  color: var(--color-heading);
+  background: var(--color-surface-hover);
+}
 .button[data-variant='danger'] {
-  background: var(--color-danger-text);
+  color: #fff;
+  background: var(--color-danger-strong);
 }
 .button[data-variant='danger']:hover {
-  background: color-mix(in srgb, var(--color-danger-text) 85%, black);
+  background: color-mix(in srgb, var(--color-danger-strong) 85%, black);
 }
 .button:disabled,
 .toggle:disabled,
 .segment:disabled {
   cursor: not-allowed;
-  opacity: 0.5;
+  opacity: 1;
+}
+.button:disabled,
+.segment:disabled,
+.segment[aria-checked='true']:disabled {
+  color: var(--color-muted);
+  background: var(--color-surface-hover);
+  border-color: var(--color-border);
+}
+.toggle:disabled {
+  background: var(--color-border-strong);
 }
 .toggle {
   width: 52px;
@@ -61,7 +88,7 @@
   width: 24px;
   height: 24px;
   border-radius: 50%;
-  background: white;
+  background: #fff;
   box-shadow: var(--shadow-control);
   transition: transform 160ms ease-out;
 }
@@ -71,8 +98,8 @@
 .segments {
   display: flex;
   flex-wrap: wrap;
-  gap: 4px;
-  padding: 4px;
+  gap: var(--space-1);
+  padding: var(--space-1);
   border-radius: var(--radius-control);
   background: var(--color-background);
 }
@@ -80,7 +107,7 @@
   flex: 1;
   min-width: max-content;
   min-height: 44px;
-  padding: 8px 14px;
+  padding: var(--space-2) var(--space-4);
   color: var(--color-muted);
   border: 0;
   border-radius: 8px;
@@ -89,38 +116,31 @@
   font-weight: 600;
 }
 .segment[aria-checked='true'] {
-  color: white;
+  color: var(--color-on-primary);
   background: var(--color-primary);
+}
+.segment:not([aria-checked='true']):not(:disabled):hover {
+  color: var(--color-heading);
 }
 .badge {
   display: inline-flex;
   align-items: center;
-  gap: 7px;
-  border-radius: var(--radius-pill);
-  padding: 7px 12px;
+  gap: var(--space-2);
   font-size: var(--font-size-small);
-  font-weight: 600;
-  white-space: nowrap;
+  font-weight: 500;
   color: var(--color-muted);
-  background: var(--color-background);
 }
 .badge[data-tone='safe'] {
   color: var(--color-safe-text);
-  background: var(--color-safe-soft);
 }
 .badge[data-tone='warning'] {
   color: var(--color-warning-text);
-  background: var(--color-warning-soft);
 }
 .badge[data-tone='danger'] {
   color: var(--color-danger-text);
-  background: var(--color-danger-soft);
 }
-/* After .badge: long component lists wrap, and the edge keeps it visible on a Waspada card. */
 .faultBadge {
-  align-self: flex-start;
-  border: 1px solid var(--color-warning);
-  border-radius: var(--radius-control);
+  align-self: start;
   white-space: normal;
 }
 .faultBadge svg {
@@ -142,17 +162,17 @@
 .empty h2 {
   color: var(--color-heading);
   font-size: 18px;
-  margin: 0 0 8px;
+  margin: 0 0 var(--space-2);
 }
 .empty p {
-  margin: 0 0 16px;
+  margin: 0 0 var(--space-4);
 }
 .error {
   color: var(--color-danger-text);
 }
 .field {
   display: grid;
-  gap: 6px;
+  gap: var(--space-2);
   min-width: 0;
 }
 .field label {
@@ -160,20 +180,39 @@
   font-size: 13px;
   font-weight: 600;
 }
-.field input {
-  width: 100%;
-  min-height: 48px;
-  padding: 0 14px;
+.inputGroup {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding-inline: var(--space-3);
   border: 1px solid var(--color-border-strong);
   border-radius: var(--radius-control);
-  color: var(--color-heading);
+  color: var(--color-muted);
   background: var(--color-surface);
 }
-.field input:focus-visible {
-  outline-offset: 1px;
+.inputGroup:focus-within {
+  border-color: var(--color-primary);
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
 }
-.field input[aria-invalid='true'] {
+.inputGroup:has([aria-invalid='true']) {
   border-color: var(--color-danger-text);
+}
+.inputGroup > svg {
+  flex-shrink: 0;
+}
+.inputGroup input,
+.inputGroup input:focus-visible {
+  min-width: 0;
+  width: 100%;
+  min-height: 48px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  outline: none;
+  background: transparent;
+  color: var(--color-heading);
 }
 .fieldHint,
 .fieldError {
@@ -194,10 +233,10 @@
   border-radius: var(--radius-card);
   color: var(--color-text);
   background: var(--color-surface);
-  box-shadow: 0 16px 48px #12352b33;
+  box-shadow: var(--shadow-overlay);
 }
 .dialog::backdrop {
-  background: #12352b66;
+  background: var(--color-scrim);
 }
 .dialog h2 {
   margin: 0 0 var(--space-3);
@@ -237,4 +276,95 @@
   .skeleton {
     animation: none;
   }
+}
+
+.segments {
+  position: relative;
+  isolation: isolate;
+  display: grid;
+  grid-template-columns: repeat(var(--segment-count), minmax(0, 1fr));
+}
+.segment {
+  min-width: 0;
+  padding-inline: var(--space-2);
+  position: relative;
+}
+.segment[aria-checked='true'] {
+  background: transparent;
+}
+.segmentIndicator {
+  position: absolute;
+  z-index: -1;
+  inset: 4px auto 4px 4px;
+  width: calc(
+    (100% - 8px - (var(--segment-count) - 1) * 4px) / var(--segment-count)
+  );
+  border-radius: 8px;
+  background: var(--color-primary);
+  transform: translateX(calc(var(--segment-index) * (100% + 4px)));
+  transition: transform 220ms cubic-bezier(0.2, 0, 0, 1);
+}
+.segments[aria-disabled='true'] .segmentIndicator {
+  background: var(--color-surface-hover);
+}
+.thumb {
+  transition: transform 220ms cubic-bezier(0.2, 0, 0, 1);
+}
+.skeleton {
+  position: relative;
+  overflow: hidden;
+  animation: none;
+}
+.skeleton::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    100deg,
+    transparent 20%,
+    var(--color-surface) 50%,
+    transparent 80%
+  );
+  opacity: 0.45;
+  transform: translateX(-100%);
+  animation: shimmer 1800ms ease-in-out infinite;
+}
+@keyframes shimmer {
+  to {
+    transform: translateX(100%);
+  }
+}
+.loadingSwap {
+  display: grid;
+}
+.loadingSwap > div {
+  grid-area: 1 / 1;
+  min-width: 0;
+  transition: opacity 120ms var(--motion-ease);
+}
+.loadingPlaceholder {
+  opacity: 0;
+  pointer-events: none;
+  visibility: hidden;
+}
+.loadingSwap[data-loading] .loadingPlaceholder {
+  opacity: 1;
+  visibility: visible;
+}
+.loadingContent {
+  opacity: 1;
+}
+.loadingSwap[data-loading] .loadingContent {
+  opacity: 0;
+}
+.loadingSwap > .loadingPlaceholder {
+  transition:
+    opacity 120ms var(--motion-ease),
+    visibility 0s 120ms;
+}
+.loadingSwap[data-loading] .loadingPlaceholder {
+  transition-delay: 0s;
+}
+.loadingPlaceholder[aria-hidden='true'] .skeleton::after {
+  animation: none;
 }

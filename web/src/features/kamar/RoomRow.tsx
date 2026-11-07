@@ -7,6 +7,7 @@ import { roomNameSchema } from '../../api/types';
 import { Button } from '../../components/ui/Button';
 import { StatusDot } from '../../components/ui/StatusDot';
 import { TextField } from '../../components/ui/TextField';
+import { RoomNotification } from '../notifikasi/RoomNotification';
 import { useLive } from '../../live/context';
 import { describeRoomError, fieldError, roomUrl } from './rooms';
 import styles from './kamar.module.css';
@@ -93,7 +94,7 @@ export function RoomRow({
   return (
     <li className={styles.roomRow}>
       <div className={styles.rowInfo}>
-        <Link to={roomUrl(room.deviceId)}>{room.name}</Link>
+        <Link viewTransition to={roomUrl(room.deviceId)}>{room.name}</Link>
         <span>
           <StatusDot
             color={room.online ? 'var(--color-safe)' : 'var(--color-danger)'}
@@ -101,9 +102,10 @@ export function RoomRow({
           {room.deviceId}, {room.online ? 'terhubung' : 'terputus'}
         </span>
       </div>
-      <div className={styles.rowActions}>
+      <RoomNotification room={room} />
+      <div className={`${styles.rowActions} ${styles.roomActions}`}>
         <Button
-          variant="secondary"
+          variant="ghost"
           aria-label={`Ubah nama ${room.name}`}
           // Keyboard users land back on this button when the editor closes.
           autoFocus={closedEditor}

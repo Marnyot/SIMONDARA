@@ -1,5 +1,5 @@
 import { useId, useRef } from 'react';
-import type { KeyboardEvent } from 'react';
+import type { CSSProperties, KeyboardEvent } from 'react';
 import styles from './ui.module.css';
 export interface SegmentOption<T extends string | number> {
   value: T;
@@ -60,7 +60,17 @@ export function SegmentedControl<T extends string | number>({
       aria-label={label}
       aria-disabled={disabled}
       className={styles.segments}
+      style={
+        {
+          '--segment-count': options.length,
+          '--segment-index': Math.max(
+            0,
+            options.findIndex((option) => option.value === value),
+          ),
+        } as CSSProperties
+      }
     >
+      <span aria-hidden="true" className={styles.segmentIndicator} />
       {options.map((option, index) => (
         <button
           key={`${id}-${option.value}`}

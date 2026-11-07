@@ -24,7 +24,7 @@ export default function RoomLayout() {
     [room, connection],
   );
   const back = (
-    <Link className={styles.back} to="/">
+    <Link viewTransition className={styles.back} to="/">
       <ArrowLeft size={18} aria-hidden="true" />
       Daftar Kamar
     </Link>
@@ -41,7 +41,7 @@ export default function RoomLayout() {
           <EmptyState
             title="Kamar ini tidak terdaftar"
             action={
-              <Link to="/" className={ui.button}>
+              <Link viewTransition to="/" className={ui.button}>
                 Buka Daftar Kamar
               </Link>
             }

@@ -2,7 +2,13 @@ import { describe, expect, it } from 'vitest';
 import { ApiError } from '../../api/client';
 import type { Room } from '../../api/types';
 import { deviceIdSchema, roomNameSchema } from '../../api/types';
-import { describeRoomError, fieldError, summarizeRooms } from './rooms';
+import {
+  countRooms,
+  sortRooms,
+  describeRoomError,
+  fieldError,
+  summarizeRooms,
+} from './rooms';
 
 describe('validasi form kamar', () => {
   it.each(['kamar-02', 'kos-01', '0', 'a'.repeat(32), '  kamar-02  '])(
@@ -52,4 +58,54 @@ it('ringkasan menyebut hanya kondisi yang perlu perhatian', () => {
   expect(summarizeRooms([room(2500), room(1500), room(500, false)])).toBe(
     '3 kamar: 1 Bahaya, 1 Waspada, 1 terputus',
   );
+});
+
+describe('prioritas dan ringkasan kamar', () => {
+  const room = (name: string, ppm = 500, online = true, fault = 0): Room => ({
+    name,
+    deviceId: name,
+    online,
+    telemetry: { t: 25, h: 50, ppm },
+    state: { status: 0, fan: 0, mode: 0, led: 1, buzzer: 0, mute: 0, fault },
+    updatedAt: null,
+    createdAt: '2026-01-01T00:00:00Z',
+  });
+  it('bahaya > terputus > gangguan > waspada > aman, lalu nama; tidak memutasi input', () => {
+    const rooms = [
+      room('Aman 10'),
+      room('Waspada', 1500),
+      room('Gangguan', 1500, true, 2),
+      room('Terputus', 1500, false),
+      room('Bahaya', 2500, false, 1),
+      room('Aman 2'),
+    ];
+    const original = [...rooms];
+    expect(sortRooms(rooms).map(({ name }) => name)).toEqual([
+      'Bahaya',
+      'Terputus',
+      'Gangguan',
+      'Waspada',
+      'Aman 2',
+      'Aman 10',
+    ]);
+    expect(rooms).toEqual(original);
+  });
+  it('menghitung status udara terpisah dari koneksi dan gangguan', () => {
+    expect(
+      countRooms([
+        room('a', 2500, false, 3),
+        room('b', 1500),
+        room('c'),
+        { ...room('d'), telemetry: null },
+      ]),
+    ).toEqual({
+      danger: 1,
+      warning: 1,
+      safe: 1,
+      offline: 1,
+      fault: 1,
+      pending: 1,
+    });
+    expect(sortRooms([])).toEqual([]);
+  });
 });

@@ -1,0 +1,149 @@
+/* One feedback language, including links styled as chips and native buttons. */
+:root {
+  --motion-ease: cubic-bezier(0.2, 0, 0, 1);
+}
+button,
+a {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+button:not(:disabled),
+a:not([aria-disabled='true']),
+[data-pressable] {
+  transition:
+    transform 180ms cubic-bezier(0.2, 0.8, 0.3, 1.12),
+    opacity 120ms var(--motion-ease);
+}
+button:not(:disabled):active,
+a:not([aria-disabled='true']):active,
+[data-pressable]:has(a:active) {
+  transform: scale(0.97);
+  opacity: 0.86;
+  transition-duration: 120ms;
+}
+/* A stretched room link presses the whole card, not just the heading. */
+[data-pressable] a:active {
+  transform: none;
+  opacity: 1;
+}
+:root:not([data-theme-reveal]) #main {
+  view-transition-name: page-content;
+}
+:root:not([data-theme-reveal]) {
+  --route-shift: 16px;
+}
+:root[data-route-direction='back'] {
+  --route-shift: -16px;
+}
+:root:not([data-theme-reveal])::view-transition-old(root) {
+  animation: none;
+  opacity: 0;
+}
+:root:not([data-theme-reveal])::view-transition-new(root) {
+  animation: none;
+}
+:root:not([data-theme-reveal])::view-transition-group(page-content) {
+  animation: none;
+}
+::view-transition-old(page-content) {
+  animation: page-out 160ms var(--motion-ease) both;
+}
+::view-transition-new(page-content) {
+  animation: page-in 200ms var(--motion-ease) both;
+}
+@keyframes page-in {
+  from {
+    opacity: 0;
+    transform: translateX(var(--route-shift));
+  }
+}
+@keyframes page-out {
+  to {
+    opacity: 0;
+    transform: translateX(calc(var(--route-shift) * -1));
+  }
+}
+@keyframes content-in {
+  from {
+    opacity: 0;
+  }
+}
+.motion-content {
+  animation: content-in 180ms var(--motion-ease) backwards;
+}
+/* Reveal a chart with a translated mask: only its transform is animated. */
+.chart-reveal {
+  overflow: hidden;
+  position: relative;
+}
+.chart-reveal::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: var(--color-surface);
+  transform: translateX(100%);
+  animation: chart-uncover 560ms var(--motion-ease) backwards;
+}
+@keyframes chart-uncover {
+  from {
+    transform: translateX(0);
+  }
+}
+.sensor-number {
+  display: inline-grid;
+  min-width: 5ch;
+  font: inherit;
+  color: inherit;
+  font-variant-numeric: tabular-nums;
+}
+.sensor-number > span {
+  grid-area: 1 / 1;
+  font: inherit;
+  color: inherit;
+}
+.sensor-number > span[data-current] {
+  animation: content-in 120ms ease-out;
+}
+.sensor-number > span[aria-hidden] {
+  visibility: hidden;
+}
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+  button:active,
+  a:active,
+  [data-pressable]:has(a:active) {
+    transform: none !important;
+  }
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation: none !important;
+  }
+}
+:root:not([data-theme-reveal]) [data-nav-indicator] {
+  view-transition-name: bottom-indicator;
+}
+::view-transition-group(bottom-indicator) {
+  animation-duration: 200ms;
+  animation-timing-function: var(--motion-ease);
+}
+::view-transition-old(bottom-indicator) {
+  animation: none;
+  opacity: 0;
+}
+::view-transition-new(bottom-indicator) {
+  animation: none;
+}
+/* Snapshot the target pill position; the named transition itself supplies the glide. */
+:root[data-route-transition] [data-nav-indicator] {
+  transition: none;
+}
+:root:not([data-theme-reveal])::view-transition-group(root) {
+  animation: none;
+}

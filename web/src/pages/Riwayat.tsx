@@ -1,6 +1,7 @@
+import { SensorNumber } from '../components/ui/SensorNumber';
 import { lazy, Suspense } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { PageHeader } from '../components/PageHeader';
+import { RoomHeader } from '../components/RoomHeader';
 import { Card } from '../components/ui/Card';
 import { EmptyState } from '../components/ui/EmptyState';
 import { ErrorState } from '../components/ui/ErrorState';
@@ -16,6 +17,7 @@ import {
   formatTime,
   parseRange,
   RANGE_OPTIONS,
+  bucketInterval,
 } from '../features/riwayat/history';
 import { useEvents, useHistory } from '../features/riwayat/useHistory';
 import styles from './Riwayat.module.css';
@@ -31,30 +33,26 @@ const metrics = [
 export default function Riwayat() {
   const [query, setQuery] = useSearchParams();
   const range = parseRange(query.get('range'));
-  const { deviceId, name, telemetry, online, state } = useRoom();
+  const { deviceId, telemetry, online, state } = useRoom();
   const unreliable = unreliableReadings(state);
+  const setRange = (value: string) =>
+    setQuery((previous) => {
+      const next = new URLSearchParams(previous);
+      next.set('range', value);
+      return next;
+    });
   const history = useHistory(deviceId, range);
   const events = useEvents(deviceId, range);
   return (
     <>
       <div className={styles.toolbar}>
-        <PageHeader
-          title={name}
-          subtitle="Riwayat tren sensor dari cloud"
-          online={online}
-        />
+        <RoomHeader />
         <div className={styles.range}>
           <SegmentedControl
             label="Rentang waktu riwayat"
             value={range}
             options={RANGE_OPTIONS}
-            onChange={(value) =>
-              setQuery((previous) => {
-                const next = new URLSearchParams(previous);
-                next.set('range', value);
-                return next;
-              })
-            }
+            onChange={setRange}
           />
         </div>
       </div>
@@ -67,12 +65,26 @@ export default function Riwayat() {
             <div className={styles.cardHeader}>
               <h2>{label}</h2>
               <span>
-                {telemetry
-                  ? `${online ? 'Sekarang' : 'Terakhir'} ${formatNumber(telemetry[key], key === 'ppm' ? 0 : 1)} ${unit}${unreliable[key] ? ' (tidak andal)' : ''}`
-                  : 'Belum ada data langsung'}
+                {telemetry ? (
+                  <>
+                    {online ? 'Sekarang' : 'Terakhir'}{' '}
+                    <span className={styles.reading}>
+                      <SensorNumber
+                        value={formatNumber(
+                          telemetry[key],
+                          key === 'ppm' ? 0 : 1,
+                        )}
+                      />
+                      <small>{unit}</small>
+                    </span>
+                    {unreliable[key] ? ' (tidak andal)' : ''}
+                  </>
+                ) : (
+                  'Belum ada data langsung'
+                )}
               </span>
             </div>
-            {history.loading ? (
+            {history.loading || history.from === null || history.to === null ? (
               <div className={styles.chartState}>
                 <Skeleton height={130} label={`Memuat grafik ${label}`} />
               </div>
@@ -92,7 +104,16 @@ export default function Riwayat() {
                 <SensorChart
                   points={history.points}
                   metric={key}
-                  daily={range === '7d'}
+                  from={history.from}
+                  to={history.to}
+                  intervalMs={bucketInterval(range)}
+                  zoomAction={
+                    range !== '1h' ? (
+                      <button type="button" onClick={() => setRange('1h')}>
+                        Lihat 1 Jam
+                      </button>
+                    ) : undefined
+                  }
                 />
               </Suspense>
             )}

@@ -1,7 +1,29 @@
 .wrapper {
-  margin-top: 16px;
+  margin-top: var(--space-4);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
 }
 .feedback {
-  margin: 8px 0 0;
+  margin: 0;
   font-size: 13px;
+}
+.wrapper button[data-variant] {
+  min-height: 44px;
+  color: var(--color-danger-text);
+  border: 1px solid var(--color-danger);
+  background: var(--color-surface);
+}
+.wrapper button[data-variant]:hover:not(:disabled) {
+  background: var(--color-danger-soft);
+}
+.feedback {
+  color: var(--color-muted);
+}
+
+.wrapper button[data-variant]:disabled {
+  color: var(--color-muted);
+  border-color: var(--color-border);
+  background: var(--color-surface-hover);
 }

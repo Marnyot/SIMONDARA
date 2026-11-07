@@ -11,6 +11,7 @@ import { RoomForm } from '../features/kamar/RoomForm';
 import { RoomRow } from '../features/kamar/RoomRow';
 import { describeRoomError } from '../features/kamar/rooms';
 import styles from '../features/kamar/kamar.module.css';
+import { NotificationsPanel } from '../features/notifikasi/NotificationsPanel';
 import { useLive } from '../live/context';
 
 export default function KelolaKamar() {
@@ -52,6 +53,7 @@ export default function KelolaKamar() {
         {notice}
       </div>
       <div className={styles.manage}>
+        <NotificationsPanel />
         <div className={styles.manageColumn}>
           <NewDevices devices={unregistered} />
           <RoomForm
@@ -62,7 +64,7 @@ export default function KelolaKamar() {
             }}
           />
         </div>
-        <Card className={styles.panel}>
+        <Card className={`${styles.panel} ${styles.registeredPanel}`}>
           <h2 ref={listTitle} tabIndex={-1} className={styles.panelTitle}>
             Kamar terdaftar ({rooms.length})
           </h2>

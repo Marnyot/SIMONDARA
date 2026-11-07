@@ -1,9 +1,18 @@
-import { FAULTS } from '../../live/status';
+import {
+  TriangleAlert,
+  CircuitBoard,
+  Clock3,
+  Cloud,
+  Monitor,
+  Thermometer,
+  Wind,
+  Wifi,
+} from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import type { AirStatus } from '../../live/status';
 import type { ConnectionStatus } from '../../live/reducer';
 import type { Telemetry } from '../../api/types';
 import { Card } from '../../components/ui/Card';
-import { StatusDot } from '../../components/ui/StatusDot';
 import { LCD_COLUMNS, formatLcdLines } from './lcd';
 import { formatAbsoluteTime, formatRelativeTime, useNow } from './time';
 import styles from './kontrol.module.css';
@@ -22,7 +31,7 @@ export function LcdCard({
   const lines = formatLcdLines(telemetry, status);
   return (
     <Card className={styles.card}>
-      <h2 className={styles.title}>Tampilan LCD</h2>
+      <h3 className={styles.title}>Tampilan LCD</h3>
       <div
         className={styles.lcd}
         role="img"
@@ -60,28 +69,25 @@ function Row({
   value,
   tone,
   title,
+  icon: Icon,
 }: {
+  icon: LucideIcon;
   label: string;
   value: string;
   tone?: 'safe' | 'warning' | 'danger';
   title?: string;
 }) {
   return (
-    <div className={styles.row}>
-      <dt>{label}</dt>
+    <div className={styles.row} data-tone={tone}>
+      <dt>
+        <Icon size={16} aria-hidden="true" />
+        <span>{label}</span>
+      </dt>
       <dd title={title}>
-        {tone ? (
-          <StatusDot
-            color={
-              tone === 'safe'
-                ? 'var(--color-safe)'
-                : tone === 'warning'
-                  ? 'var(--color-warning)'
-                  : 'var(--color-danger)'
-            }
-          />
+        {tone === 'danger' || tone === 'warning' ? (
+          <TriangleAlert size={14} aria-hidden="true" />
         ) : null}
-        {value}
+        <span>{value}</span>
       </dd>
     </div>
   );
@@ -102,35 +108,79 @@ export function ConnectionCard({
   const now = useNow();
   return (
     <Card className={styles.card}>
-      <h2 className={styles.title}>Koneksi</h2>
-      <dl className={styles.rows}>
-        <Row
-          label="Perangkat"
-          value={online ? 'Terhubung' : 'Terputus'}
-          tone={online ? 'safe' : 'danger'}
-        />
-        <Row
-          label="Server"
-          value={SERVER_LABEL[connection]}
-          tone={connection === 'connected' ? 'safe' : 'warning'}
-        />
-        <Row
-          label="Data terakhir"
-          value={updatedAt ? formatRelativeTime(updatedAt, now) : 'Belum ada'}
-          title={updatedAt ? formatAbsoluteTime(updatedAt) : undefined}
-        />
-        <Row label="Model" value="NodeMCU ESP8266" />
-        {fault === null
-          ? null
-          : FAULTS.map(({ bit, label }) => (
+      <h3 className={styles.title}>Koneksi</h3>
+      <div className={styles.connectionGroups}>
+        <section className={styles.connectionGroup} aria-label="Jaringan">
+          <div className={styles.connectionHeading}>
+            <h4>Jaringan</h4>
+            <span>NodeMCU ESP8266</span>
+          </div>
+          <dl className={styles.rows}>
+            <Row
+              icon={Wifi}
+              label="Perangkat"
+              value={online ? 'Terhubung' : 'Terputus'}
+              tone={online ? 'safe' : 'danger'}
+            />
+            <Row
+              icon={Cloud}
+              label="Server"
+              value={SERVER_LABEL[connection]}
+              tone={connection === 'connected' ? 'safe' : 'warning'}
+            />
+            <Row
+              icon={Clock3}
+              label="Data terakhir"
+              value={
+                updatedAt ? formatRelativeTime(updatedAt, now) : 'Belum ada'
+              }
+              title={updatedAt ? formatAbsoluteTime(updatedAt) : undefined}
+            />
+          </dl>
+        </section>
+        <section className={styles.connectionGroup} aria-label="Sensor">
+          <div className={styles.connectionHeading}>
+            <h4>Sensor</h4>
+            <CircuitBoard size={16} aria-hidden="true" />
+          </div>
+          <dl className={styles.rows}>
+            {(
+              [
+                {
+                  bit: 1,
+                  label: 'DHT11',
+                  icon: Thermometer,
+                  title: 'Sensor suhu/kelembapan (DHT11)',
+                },
+                {
+                  bit: 2,
+                  label: 'MQ-135',
+                  icon: Wind,
+                  title: 'Sensor gas (MQ-135)',
+                },
+                { bit: 4, label: 'LCD', icon: Monitor, title: 'Layar LCD' },
+              ] as const
+            ).map(({ bit, label, icon, title }) => (
               <Row
                 key={bit}
+                icon={icon}
                 label={label}
-                value={fault & bit ? 'Gangguan' : 'Normal'}
-                tone={fault & bit ? 'warning' : 'safe'}
+                title={title}
+                value={
+                  fault === null
+                    ? 'Belum ada'
+                    : fault & bit
+                      ? 'Gangguan'
+                      : 'Normal'
+                }
+                tone={
+                  fault === null ? undefined : fault & bit ? 'danger' : 'safe'
+                }
               />
             ))}
-      </dl>
+          </dl>
+        </section>
+      </div>
     </Card>
   );
 }
