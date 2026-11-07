@@ -95,6 +95,13 @@ void onCommand(const char* payload, size_t length) {
   const air::Mode previousMode = control.mode;
   if (air::applyCommand(control, cmd)) LOGF("cmd", "fan/led/buzzer diabaikan pada mode otomatis");
   if (control.mode != previousMode) LOGF("cmd", "mode -> %s", control.mode == air::kManual ? "manual" : "otomatis");
+  if (cmd.mute != air::kAbsent) {
+    LOGF("cmd", "mute -> %u (mode %s, status %s, buzzer %u)", control.mute,
+         control.mode == air::kManual ? "manual" : "otomatis",
+         control.evaluated ? air::statusLabel(control.status) : "-", control.out.buzzer);
+  }
+  // Keluaran sudah dihitung ulang di applyCommand; loop() iterasi yang sama
+  // (updateControl -> publishStateIfChanged) menerapkan pin dan publish state.
 }
 
 void onConnected() { statePending = true; }
@@ -237,6 +244,7 @@ void setup() {
   Serial.begin(115200);
   Serial.println();
   LOGF("boot", "SIMONDARA fw %s, reset: %s", kFirmwareVersion, ESP.getResetReason().c_str());
+  LOGF("act", "buzzer mati (%s)", config::BUZZER_OFF_HIGH_Z && config::BUZZER_ACTIVE_LOW ? "high-Z" : "level OFF");
 
   display::begin();
   sensors::begin();
