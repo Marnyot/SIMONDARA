@@ -43,6 +43,7 @@ export const formatNumber = (value: number, fractionDigits = 1) =>
     maximumFractionDigits: fractionDigits,
   });
 
+export const GAS_AXIS_MAX = 1500;
 export function historyAxis(
   points: HistoryPoint[],
   metric: 't' | 'h' | 'ppm',
@@ -54,11 +55,17 @@ export function historyAxis(
     max = Math.max(max, point[metric]);
   }
   if (metric === 'ppm') {
-    const upper = Math.max(3000, Math.ceil(max / 1000) * 1000);
-    return {
-      domain: [0, upper],
-      ticks: [0, THRESHOLDS.gas.warning, THRESHOLDS.gas.danger, upper],
-    };
+    // Batas atas 1.500 ppm agar data harian (umumnya < 1.000) tidak datar;
+    // melebar per 500 ppm hanya bila ada bacaan di atasnya supaya tidak terpotong.
+    const upper =
+      max <= GAS_AXIS_MAX ? GAS_AXIS_MAX : Math.ceil(max / 500) * 500;
+    const ticks =
+      upper === GAS_AXIS_MAX
+        ? [0, 500, THRESHOLDS.gas.warning, GAS_AXIS_MAX]
+        : [0, THRESHOLDS.gas.warning, THRESHOLDS.gas.danger, upper].filter(
+            (tick, index, all) => tick <= upper && all.indexOf(tick) === index,
+          );
+    return { domain: [0, upper], ticks };
   }
   const lower =
     metric === 'h' ? Math.max(0, Math.floor(min - 1)) : Math.floor(min - 1);

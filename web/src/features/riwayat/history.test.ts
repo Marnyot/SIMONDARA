@@ -102,8 +102,16 @@ describe('format angka dan skala grafik', () => {
       [{ at: '2026-10-31T14:49:35.457Z', t: 27, h: 50.3, ppm: 3450 }],
       'ppm',
     );
-    expect(axis.ticks).toEqual([0, 1000, 2000, 4000]);
-    expect(axis.domain).toEqual([0, 4000]);
+    expect(axis.ticks).toEqual([0, 1000, 2000, 3500]);
+    expect(axis.domain).toEqual([0, 3500]);
+  });
+  it('memakai batas atas 1.500 ppm selama data tidak melewatinya', () => {
+    const axis = historyAxis(
+      [{ at: '2026-10-31T14:49:35.457Z', t: 27, h: 50.3, ppm: 820 }],
+      'ppm',
+    );
+    expect(axis.domain).toEqual([0, 1500]);
+    expect(axis.ticks).toEqual([0, 500, 1000, 1500]);
   });
 });
 
