@@ -11,7 +11,7 @@ import {
   useNow,
 } from '../kontrol/time';
 import { newRoomUrl } from './rooms';
-import styles from './kamar.module.css';
+import styles from './DaftarKamar.module.css';
 
 export function NewDevices({ devices }: { devices: UnregisteredDevice[] }) {
   const titleId = useId();
@@ -40,7 +40,7 @@ export function NewDevices({ devices }: { devices: UnregisteredDevice[] }) {
                 {formatRelativeTime(lastSeen, now)}
               </span>
             </div>
-            <Link
+            <Link viewTransition
               to={newRoomUrl(deviceId)}
               className={ui.button}
               data-variant="secondary"

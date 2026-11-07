@@ -1,5 +1,7 @@
 import { z } from 'zod';
 import {
+  notificationsSchema,
+  notificationsPatchSchema,
   commandSchema,
   eventSchema,
   historyPointSchema,
@@ -7,7 +9,7 @@ import {
   roomsPayloadSchema,
   snapshotSchema,
 } from './types';
-import type { Command, HistoryBucket } from './types';
+import type { Command, HistoryBucket, NotificationsPatch } from './types';
 export const UNAUTHORIZED_EVENT = 'simondara:unauthorized';
 const errorBodySchema = z.object({ error: z.string() });
 const roomPath = (deviceId: string) => `/rooms/${encodeURIComponent(deviceId)}`;
@@ -75,6 +77,26 @@ export async function request<T>(
   }
 }
 export const api = {
+  notifications: (signal?: AbortSignal) =>
+    request('/notifications', { signal }, notificationsSchema),
+  updateNotifications: (input: NotificationsPatch) =>
+    request(
+      '/notifications',
+      {
+        method: 'PATCH',
+        body: JSON.stringify(notificationsPatchSchema.parse(input)),
+      },
+      notificationsSchema,
+    ),
+  setRoomNotify: (deviceId: string, notify: boolean) =>
+    request(
+      roomPath(deviceId),
+      {
+        method: 'PATCH',
+        body: JSON.stringify({ notify }),
+      },
+      roomSchema,
+    ),
   me: (signal?: AbortSignal) =>
     request('/auth/me', { signal }, z.object({ user: z.string() })),
   login: (password: string) =>

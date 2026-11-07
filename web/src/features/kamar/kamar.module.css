@@ -83,7 +83,7 @@
 .link {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--space-2);
   flex-shrink: 0;
   padding-top: 2px;
   color: var(--secondary);
@@ -167,7 +167,7 @@
 .roomBottom > span {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--space-2);
 }
 
 .panel {
@@ -183,7 +183,7 @@
   outline: none;
 }
 .panelHint {
-  margin: 4px 0 0;
+  margin: var(--space-1) 0 0;
   color: var(--color-muted);
   font-size: 13px;
 }
@@ -223,7 +223,7 @@
 .rowInfo span {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--space-2);
   color: var(--color-muted);
   font-size: var(--font-size-small);
 }
@@ -258,14 +258,17 @@
   font-size: 13px;
 }
 .roomRow {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-2) var(--space-4);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: var(--space-2) var(--space-3);
+}
+.roomActions {
+  grid-column: 1 / -1;
+  flex-wrap: nowrap;
 }
 .rowInfo {
-  flex: 1 1 200px;
+  flex: 0 1 240px;
 }
 .rowInfo a {
   color: var(--color-heading);
@@ -297,7 +300,7 @@
     gap: var(--space-5);
   }
   .manage {
-    grid-template-columns: minmax(320px, 2fr) minmax(0, 3fr);
+    grid-template-columns: minmax(0, 1fr);
     gap: var(--space-5);
   }
   .manageColumn {
@@ -305,5 +308,44 @@
   }
   .panel {
     padding: var(--space-6);
+  }
+}
+.manage > *,
+.panel {
+  min-width: 0;
+}
+.manage .panelTitle {
+  font-size: var(--font-size-section);
+}
+.roomRow {
+  padding-block: var(--space-4);
+}
+.rowActions button:not([role='switch']) {
+  min-height: 44px;
+}
+
+.roomRow {
+  align-items: start;
+}
+.rowActions {
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+}
+.rowActions button:not([role='switch']) {
+  padding-inline: var(--space-3);
+}
+.manageColumn {
+  align-content: start;
+}
+
+.manage > :first-child {
+  margin-bottom: 0;
+}
+@media (min-width: 1100px) {
+  .manage {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .registeredPanel {
+    grid-column: 1 / -1;
   }
 }

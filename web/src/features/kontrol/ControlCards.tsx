@@ -1,10 +1,9 @@
 import { useId } from 'react';
 import type { ReactNode } from 'react';
-import { BellOff, BellRing } from 'lucide-react';
 import type { DeviceState } from '../../api/types';
-import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
 import { SegmentedControl } from '../../components/ui/SegmentedControl';
+import { StatusDot } from '../../components/ui/StatusDot';
 import { Toggle } from '../../components/ui/Toggle';
 import styles from './kontrol.module.css';
 
@@ -24,19 +23,27 @@ function CardHeading({
   status,
   pending,
   aside,
+  headingTag: Heading = 'h3',
 }: {
   title: string;
   status?: ReactNode;
   pending: boolean;
   aside?: ReactNode;
+  headingTag?: 'h2' | 'h3';
 }) {
   return (
     <div className={styles.heading}>
       <div>
-        <h2 className={styles.title}>{title}</h2>
+        <Heading className={styles.title}>{title}</Heading>
         {pending || status ? (
           <p className={styles.status} aria-live="polite">
-            {pending ? <PendingNote /> : status}
+            {status}
+            {pending ? (
+              <>
+                <br />
+                <PendingNote />
+              </>
+            ) : null}
           </p>
         ) : null}
       </div>
@@ -55,6 +62,7 @@ export function SwitchCard({
   title,
   onLabel,
   checked,
+  actual,
   onChange,
   disabled,
   pending,
@@ -63,6 +71,7 @@ export function SwitchCard({
   title: string;
   onLabel: string;
   checked: boolean;
+  actual?: boolean;
   onChange: (checked: boolean) => void;
 }) {
   const hintId = useId();
@@ -70,7 +79,7 @@ export function SwitchCard({
     <Card className={styles.card} data-disabled={disabled || undefined}>
       <CardHeading
         title={title}
-        status={checked ? onLabel : 'Mati'}
+        status={`Status perangkat: ${(actual ?? checked) ? onLabel : 'Mati'}`}
         pending={pending}
         aside={
           <Toggle
@@ -83,6 +92,12 @@ export function SwitchCard({
           />
         }
       />
+      {disabled ? (
+        <span className={styles.locked}>
+          <StatusDot />
+          Kontrol nonaktif
+        </span>
+      ) : null}
       {hint ? (
         <p id={hintId} className={styles.hint}>
           {hint}
@@ -99,22 +114,29 @@ const MODE_OPTIONS = [
 
 export function ModeCard({
   value,
+  actual,
   onChange,
   disabled,
   pending,
 }: CommonProps & {
   value: DeviceState['mode'];
+  actual: DeviceState['mode'];
   onChange: (value: DeviceState['mode']) => void;
 }) {
   return (
     <Card className={styles.card} aria-busy={pending || undefined}>
-      <CardHeading title="Mode Sistem" pending={pending} />
+      <CardHeading
+        title="Mode Sistem"
+        headingTag="h2"
+        status={`Mode perangkat: ${actual === 0 ? 'Otomatis' : 'Manual'}`}
+        pending={pending}
+      />
       <SegmentedControl
         label="Mode Sistem"
         options={MODE_OPTIONS}
         value={value}
         onChange={onChange}
-        disabled={disabled}
+        disabled={disabled || pending}
       />
       <p className={styles.description}>
         {value === 0 ? (
@@ -141,15 +163,18 @@ const LED_OPTIONS = [
 
 export function LedCard({
   value,
+  actual,
   onChange,
   disabled,
   pending,
   hint,
 }: CommonProps & {
   value: DeviceState['led'];
+  actual?: DeviceState['led'];
   onChange: (value: DeviceState['led']) => void;
 }) {
-  const label = LED_OPTIONS[value].label;
+  const reported = actual ?? value;
+  const label = LED_OPTIONS[reported].label;
   return (
     <Card
       className={styles.card}
@@ -158,17 +183,23 @@ export function LedCard({
     >
       <CardHeading
         title="LED Indikator"
-        status={value === 0 ? 'Mati' : `Menyala ${label.toLowerCase()}`}
+        status={`Status perangkat: ${LED_OPTIONS[actual ?? value].label}`}
         pending={pending}
         aside={
           <span
             className={styles.lamp}
-            data-led={value}
+            data-led={reported}
             role="img"
             aria-label={`LED ${label.toLowerCase()}`}
           />
         }
       />
+      {disabled ? (
+        <span className={styles.locked}>
+          <StatusDot />
+          Kontrol nonaktif
+        </span>
+      ) : null}
       <SegmentedControl
         label="Warna LED Indikator"
         options={LED_OPTIONS}
@@ -177,53 +208,6 @@ export function LedCard({
         disabled={disabled}
       />
       {hint ? <p className={styles.hint}>{hint}</p> : null}
-    </Card>
-  );
-}
-
-export function MuteCard({
-  muted,
-  danger,
-  onChange,
-  disabled,
-  pending,
-}: CommonProps & {
-  muted: boolean;
-  danger: boolean;
-  onChange: (muted: boolean) => void;
-}) {
-  const Icon = muted ? BellOff : BellRing;
-  const text = muted
-    ? 'Alarm dibisukan sampai status kembali Aman.'
-    : danger
-      ? 'Status Bahaya: buzzer sedang membunyikan alarm.'
-      : 'Buzzer berbunyi otomatis saat status Bahaya.';
-  return (
-    <Card
-      className={`${styles.card} ${styles.mute}`}
-      data-danger={danger || undefined}
-      aria-busy={pending || undefined}
-    >
-      <div className={styles.muteBody}>
-        <span className={styles.muteIcon} aria-hidden="true">
-          <Icon size={22} />
-        </span>
-        <div>
-          <h2 className={styles.title}>{danger ? 'Alarm bahaya' : 'Alarm'}</h2>
-          <p className={styles.status} aria-live="polite">
-            {pending ? <PendingNote /> : text}
-          </p>
-        </div>
-      </div>
-      <Button
-        variant={danger && !muted ? 'primary' : 'secondary'}
-        className={styles.muteButton}
-        disabled={disabled}
-        aria-busy={pending || undefined}
-        onClick={() => onChange(!muted)}
-      >
-        {muted ? 'Aktifkan alarm' : 'Bisukan alarm'}
-      </Button>
     </Card>
   );
 }

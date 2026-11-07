@@ -1,26 +1,102 @@
+/*
+ * SIMONDARA design tokens.
+ *
+ * Every colour is declared once with light-dark(): the first value is the light
+ * theme, the second the dark one. `color-scheme` picks between them, so the OS
+ * setting applies by default and `<html data-theme="light|dark">` (set by the
+ * theme toggle and the boot script in index.html) overrides it.
+ *
+ * Colour rules:
+ * - Brand green is for identity and the one primary action only: logo, login,
+ *   active navigation, primary buttons. Never as decoration or as "safe".
+ * - Status colours (safe/warning/danger) are accents: badges, dots, chart
+ *   lines, gauge segments, thin edges. Never fill a whole card with them.
+ *   `-text` variants are the only ones allowed for text (WCAG AA on surface
+ *   and on their `-soft` badge background); raw values are for graphics.
+ */
+/*
+ * Self-hosted Latin subsets (SIL OFL 1.1, see /fonts/OFL-*.txt) so the app keeps
+ * its type offline; the service worker precaches every .woff2. Only the body
+ * face is preloaded in index.html.
+ */
+@font-face {
+  font-family: 'Schibsted Grotesk';
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+  src: url('/fonts/schibsted-grotesk-latin-wght.woff2') format('woff2');
+  unicode-range:
+    U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC,
+    U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212,
+    U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'Bricolage Grotesque';
+  font-style: normal;
+  font-weight: 500 700;
+  font-display: swap;
+  src: url('/fonts/bricolage-grotesque-latin-wght.woff2') format('woff2');
+  unicode-range:
+    U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC,
+    U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212,
+    U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 500 600;
+  font-display: swap;
+  src: url('/fonts/inter-latin-wght.woff2') format('woff2');
+  unicode-range:
+    U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC,
+    U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212,
+    U+2215, U+FEFF, U+FFFD;
+}
 :root {
-  --color-background: #f4f7f6;
-  --color-surface: #fff;
-  --color-primary: #0e7c66;
-  --color-primary-hover: #09634f;
-  --color-primary-soft: #dcf1e8;
-  --color-heading: #12352b;
-  --color-text: #25483e;
-  --color-muted: #58726a;
-  --color-border: #dfe9e5;
-  --color-border-strong: #a5b9b1;
-  --color-safe: #2ea05f;
-  --color-safe-text: #176d3c;
-  --color-safe-soft: #dcf1e8;
-  --color-warning: #e8b10a;
-  --color-warning-text: #795400;
-  --color-warning-soft: #fff1c9;
-  --color-danger: #d9473f;
-  --color-danger-text: #ae2923;
-  --color-danger-soft: #fde9e7;
-  --radius-card: 16px;
-  --radius-control: 12px;
+  color-scheme: light dark;
+
+  --color-background: light-dark(#f6f6f3, #141816);
+  --color-surface: light-dark(#ffffff, #1c211f);
+  --color-surface-hover: light-dark(#f0f0ec, #252b28);
+  --color-border: light-dark(#e6e6e1, #2c3330);
+  --color-border-strong: light-dark(#8e9590, #6a736f);
+  --color-heading: light-dark(#1b1f1d, #eef1ef);
+  --color-text: light-dark(#2e3431, #d6dbd8);
+  --color-muted: light-dark(#646a67, #9ba39f);
+
+  --color-primary: light-dark(#0e7c66, #4fc7a6);
+  --color-primary-hover: light-dark(#0b6553, #6dd4b8);
+  --color-primary-soft: light-dark(#e9f4f0, #193a31);
+  --color-on-primary: light-dark(#ffffff, #0a241d);
+  /* Brand fill that stays dark green in both themes (login, splash): white text sits on it. */
+  --color-brand-solid: #0e7c66;
+
+  --color-safe: light-dark(#22a06b, #3dcb8a);
+  --color-safe-text: light-dark(#15734d, #55d69a);
+  --color-safe-soft: light-dark(#e4f4ec, #17302a);
+  --color-warning: light-dark(#e5a000, #f5b83d);
+  --color-warning-text: light-dark(#8a5a00, #f2be4a);
+  --color-warning-soft: light-dark(#fdf1d3, #33291a);
+  --color-danger: light-dark(#e5484d, #ff6467);
+  --color-danger-text: light-dark(#b42318, #ff8a8c);
+  --color-danger-soft: light-dark(#fde8e8, #3a2124);
+  /* Solid fills under white text (danger buttons, outage banner). */
+  --color-danger-strong: light-dark(#b42318, #c4302b);
+
+  /* Second chart hue for readings that carry no status of their own. */
+  --color-chart-alt: light-dark(#4a6378, #9bb4c9);
+  --color-scrim: light-dark(#1b1f1d66, #000000a6);
+
+  --shadow-control: 0 1px 3px light-dark(#1b1f1d29, #00000066);
+  --shadow-raised:
+    0 1px 2px light-dark(#1b1f1d0f, #0000004d),
+    0 8px 24px light-dark(#1b1f1d14, #00000059);
+  --shadow-overlay: 0 16px 48px light-dark(#1b1f1d33, #00000080);
+
+  --radius-card: 14px;
+  --radius-control: 10px;
   --radius-pill: 999px;
+
   --space-1: 4px;
   --space-2: 8px;
   --space-3: 12px;
@@ -30,26 +106,58 @@
   --space-8: 32px;
   --space-10: 40px;
   --space-12: 48px;
+
+  /* Bricolage Grotesque: headings and brand only. Schibsted Grotesk: UI and body. Inter: numbers. */
+  --font-display:
+    'Bricolage Grotesque', ui-sans-serif, -apple-system, BlinkMacSystemFont,
+    'Segoe UI', sans-serif;
   --font-family:
-    'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  --font-size-small: 0.75rem;
-  --font-size-body: 0.875rem;
+    'Schibsted Grotesk', ui-sans-serif, -apple-system, BlinkMacSystemFont,
+    'Segoe UI', Roboto, sans-serif;
+  /* Sensor readings, gauge, tooltips, counts: Inter 600 large / 500 small, digits that never jitter. */
+  --font-number:
+    'Inter', ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI',
+    Roboto, sans-serif;
+  --font-numeric: lining-nums tabular-nums;
+
+  /* Scale (desktop): 13 / 16 / 18 / 22 / 32 / 48. Mobile steps body down to 15. */
+  --font-size-small: 0.8125rem;
+  --font-size-body: 0.9375rem;
+  --font-size-lead: 1.125rem;
+  --font-size-section: 1.25rem;
   --font-size-title: 1.75rem;
   --font-size-metric: 2.5rem;
   --font-weight-body: 400;
   --font-weight-medium: 500;
-  --font-weight-bold: 700;
-  --shadow-control: 0 2px 5px #12352b24;
-  --shadow-raised: 0 8px 24px #12352b0a;
-  --sidebar-width: 260px;
+  --font-weight-bold: 650;
+
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --sidebar-width: 248px;
+
   font-family: var(--font-family);
   font-size: 16px;
-  line-height: 1.5;
+  line-height: 1.55;
   color: var(--color-text);
   background: var(--color-background);
   font-synthesis: none;
+  font-optical-sizing: auto;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+:root[data-theme='light'] {
+  color-scheme: light;
+}
+:root[data-theme='dark'] {
+  color-scheme: dark;
+}
+@media (min-width: 1024px) {
+  :root {
+    --font-size-body: 1rem;
+    --font-size-section: 1.375rem;
+    --font-size-title: 2rem;
+    --font-size-metric: 3rem;
+  }
 }
 * {
   box-sizing: border-box;
@@ -57,10 +165,15 @@
 body {
   margin: 0;
   min-width: 320px;
+  font-size: var(--font-size-body);
+  background: var(--color-background);
 }
 button,
-input {
+input,
+select,
+textarea {
   font: inherit;
+  color: inherit;
 }
 button,
 a,
@@ -72,9 +185,10 @@ a {
 }
 button:focus-visible,
 a:focus-visible,
-input:focus-visible {
-  outline: 3px solid var(--color-primary);
-  outline-offset: 4px;
+input:focus-visible,
+[tabindex]:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 3px;
 }
 button:focus-visible {
   position: relative;
@@ -89,8 +203,14 @@ p {
 h1,
 h2,
 h3 {
-  line-height: 1.25;
+  font-family: var(--font-display);
+  font-weight: var(--font-weight-bold);
+  line-height: 1.2;
+  letter-spacing: -0.015em;
   text-wrap: balance;
+}
+p {
+  text-wrap: pretty;
 }
 button {
   touch-action: manipulation;
@@ -98,6 +218,25 @@ button {
 ::selection {
   background: var(--color-primary-soft);
   color: var(--color-heading);
+}
+/* Utility for small numbers (summaries, counts, coverage): Inter 500, digits that never jitter. */
+.tabular-nums {
+  font-family: var(--font-number);
+  font-variant-numeric: var(--font-numeric);
+  font-weight: 500;
+  letter-spacing: normal;
+}
+/*
+ * Theme switch reveal (theme.ts): the new theme grows as a circle from the
+ * switch, so the default crossfade is turned off. Only while that reveal runs.
+ */
+:root[data-theme-reveal]::view-transition-old(root),
+:root[data-theme-reveal]::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+:root[data-theme-reveal]::view-transition-new(root) {
+  z-index: 1;
 }
 @media (prefers-reduced-motion: reduce) {
   *,
@@ -107,5 +246,10 @@ button {
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
+  }
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation: none !important;
   }
 }

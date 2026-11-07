@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useReducer, useState } from 'react';
+import type { NotificationsPatch } from '../api/types';
 import type { ReactNode } from 'react';
 import { api } from '../api/client';
 import { LiveContext } from './context';
@@ -50,7 +51,13 @@ export function LiveProvider({ children }: { children: ReactNode }) {
         failures = 0;
         dispatch({ type: 'connection', value: 'connected' });
       };
-      for (const type of ['rooms', 'state', 'telemetry', 'online']) {
+      for (const type of [
+        'rooms',
+        'state',
+        'telemetry',
+        'online',
+        'notifications',
+      ]) {
         source.addEventListener(type, (message) => {
           if (disposed) return;
           const action = parseLiveEvent(
@@ -93,6 +100,16 @@ export function LiveProvider({ children }: { children: ReactNode }) {
   }, [attempt]);
   const actions = useMemo(
     () => ({
+      updateNotifications: async (input: NotificationsPatch) => {
+        const data = await api.updateNotifications(input);
+        dispatch({ type: 'notifications', data });
+        return data;
+      },
+      setRoomNotify: async (deviceId: string, notify: boolean) => {
+        const room = await api.setRoomNotify(deviceId, notify);
+        dispatch({ type: 'roomSaved', room });
+        return room;
+      },
       retry: () => {
         setError(null);
         setAttempt((value) => value + 1);

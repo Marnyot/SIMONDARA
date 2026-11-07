@@ -8,17 +8,20 @@ import {
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import {
+  UNSAFE_ViewTransitionContext,
   NavLink,
   Outlet,
   useLocation,
   useMatch,
   useNavigationType,
 } from 'react-router-dom';
-import { useEffect, useState } from 'react';
+import { useContext, useEffect, useLayoutEffect, useState } from 'react';
+import { transitionDirection } from './motion';
 import { useAuth } from '../auth/context';
 import { roomUrl } from '../features/kamar/rooms';
 import { useLive } from '../live/context';
 import { Brand } from './Brand';
+import { ThemeSwitch } from './ThemeSwitch';
 import { Button } from './ui/Button';
 import { Toaster } from './Toaster';
 import { StatusDot } from './ui/StatusDot';
@@ -49,6 +52,7 @@ const roomNavigation = (deviceId: string): NavigationItem[] => [
 function SidebarLinks({ items }: { items: NavigationItem[] }) {
   return items.map(({ to, label, Icon }) => (
     <NavLink
+      viewTransition
       key={to}
       to={to}
       end
@@ -63,6 +67,18 @@ function SidebarLinks({ items }: { items: NavigationItem[] }) {
 }
 
 export function AppShell() {
+  const transition = useContext(UNSAFE_ViewTransitionContext);
+  useLayoutEffect(() => {
+    if (!transition.isTransitioning) return;
+    document.documentElement.dataset.routeTransition = '';
+    document.documentElement.dataset.routeDirection = transitionDirection(
+      transition.currentLocation.pathname,
+      transition.nextLocation.pathname,
+    );
+    return () => {
+      delete document.documentElement.dataset.routeTransition;
+    };
+  }, [transition]);
   const { logout } = useAuth();
   const { rooms, connection } = useLive();
   const roomMatch = useMatch('/kamar/:deviceId/*');
@@ -71,6 +87,13 @@ export function AppShell() {
   );
   const roomItems = room ? roomNavigation(room.deviceId) : null;
   const connected = rooms.filter(({ online }) => online).length;
+  const fleetColor = !rooms.length
+    ? 'var(--color-muted)'
+    : connected === rooms.length
+      ? 'var(--color-safe)'
+      : connected
+        ? 'var(--color-warning)'
+        : 'var(--color-danger)';
   const { pathname } = useLocation();
   const navigationType = useNavigationType();
   // A drill-down must not open scrolled to where the list was; Back keeps the browser's position.
@@ -115,41 +138,39 @@ export function AppShell() {
             className={styles.desktopNav}
           >
             <p className={styles.navGroup} title={room.name}>
-              {room.name}
+              <span>{room.name}</span>
             </p>
             <SidebarLinks items={roomItems} />
           </nav>
         ) : null}
         <div className={styles.sidebarBottom}>
-          <div className={styles.deviceCard}>
-            <strong>
-              <StatusDot
-                color={
-                  !rooms.length
-                    ? 'var(--color-muted)'
-                    : connected
-                      ? 'var(--color-safe)'
-                      : 'var(--color-danger)'
-                }
-              />
-              {rooms.length
-                ? `${connected} dari ${rooms.length} perangkat terhubung`
-                : 'Belum ada kamar'}
-            </strong>
-            <span>NodeMCU ESP8266</span>
-          </div>
+          <p className={styles.fleet}>
+            <StatusDot color={fleetColor} />
+            {rooms.length ? (
+              <span>
+                <span className="tabular-nums">
+                  {connected}/{rooms.length}
+                </span>{' '}
+                perangkat terhubung
+              </span>
+            ) : (
+              'Belum ada kamar'
+            )}
+          </p>
+          <ThemeSwitch labelled />
           <Button
             variant="ghost"
             loading={loggingOut}
             onClick={() => void leave()}
           >
-            <LogOut size={16} aria-hidden="true" />
+            <LogOut size={18} aria-hidden="true" />
             Keluar
           </Button>
         </div>
       </aside>
       <div className={styles.mobileTop}>
         <Brand />
+        <ThemeSwitch />
         <Button
           variant="ghost"
           aria-label="Keluar dari akun"
@@ -170,9 +191,26 @@ export function AppShell() {
       <nav
         aria-label={room ? `Navigasi ${room.name}` : 'Navigasi utama mobile'}
         className={styles.bottomNav}
+        style={
+          {
+            '--tab-count': (roomItems ?? mainNavigation).length,
+            '--tab-index': Math.max(
+              0,
+              (roomItems ?? mainNavigation).findIndex(
+                ({ to }) => to === (pathname.replace(/\/$/, '') || '/'),
+              ),
+            ),
+          } as React.CSSProperties
+        }
       >
+        <span
+          aria-hidden="true"
+          data-nav-indicator
+          className={styles.bottomIndicator}
+        />
         {(roomItems ?? mainNavigation).map(({ to, label, Icon }) => (
           <NavLink
+            viewTransition
             key={to}
             to={to}
             end
@@ -180,7 +218,9 @@ export function AppShell() {
               `${styles.bottomItem} ${isActive ? styles.bottomActive : ''}`
             }
           >
-            <Icon size={22} aria-hidden="true" />
+            <span className={styles.bottomIcon}>
+              <Icon size={22} aria-hidden="true" />
+            </span>
             <span>{label}</span>
           </NavLink>
         ))}

@@ -12,7 +12,7 @@ export default defineConfig({
         short_name: 'SIMONDARA',
         lang: 'id',
         description: 'Sistem Monitoring dan Peringatan Dini Kualitas Udara',
-        theme_color: '#0E7C66',
+        theme_color: '#F6F6F3',
         background_color: '#0E7C66',
         display: 'standalone',
         start_url: '/',

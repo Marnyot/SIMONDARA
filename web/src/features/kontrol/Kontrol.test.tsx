@@ -131,9 +131,13 @@ describe('halaman Kontrol', () => {
 
   it('merinci gangguan per komponen di kartu Koneksi', () => {
     renderPage(live({ state: { ...baseState, fault: 2 } }));
-    const row = (label: string) => screen.getByText(label).parentElement;
-    expect(row('Sensor gas (MQ-135)')).toHaveTextContent('Gangguan');
-    expect(row('Layar LCD')).toHaveTextContent('Normal');
+    const row = (label: string) =>
+      screen.getByText(label).closest('dt')?.parentElement;
+    expect(row('MQ-135')).toHaveTextContent('Gangguan');
+    expect(row('LCD')).toHaveTextContent('Normal');
+    expect(row('LCD')?.querySelector('dd svg')).toBeNull();
+    expect(row('LCD')?.querySelector('dd [class*=dot]')).toBeNull();
+    expect(row('MQ-135')?.querySelector('dd svg')).not.toBeNull();
   });
 
   it('menonaktifkan semua kontrol saat perangkat offline', () => {

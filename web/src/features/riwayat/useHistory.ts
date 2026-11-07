@@ -5,18 +5,35 @@ import { historyWindow } from './history';
 import type { HistoryRange } from './history';
 
 type Result<T> = { data: T[]; error: string | null; key: string };
+/** The exact window that was requested, in epoch ms; charts use it as their time axis. */
+export type HistoryWindow = { from: number; to: number };
 const message = (cause: unknown) =>
   cause instanceof Error
     ? cause.message
     : 'Data gagal dimuat. Silakan coba lagi.';
 
-export function useHistory(deviceId: string, range: HistoryRange) {
+export function useHistory(
+  deviceId: string,
+  range: HistoryRange,
+  refreshMs = 0,
+) {
   const [attempt, setAttempt] = useState(0);
-  const [result, setResult] = useState<Result<HistoryPoint> | null>(null);
+  const [result, setResult] = useState<
+    (Result<HistoryPoint> & { window: HistoryWindow }) | null
+  >(null);
+  useEffect(() => {
+    if (!refreshMs) return;
+    const timer = window.setInterval(() => {
+      if (document.visibilityState === 'visible')
+        setAttempt((value) => value + 1);
+    }, refreshMs);
+    return () => window.clearInterval(timer);
+  }, [refreshMs]);
   const key = `${deviceId}-${range}-${attempt}`;
   useEffect(() => {
     const controller = new AbortController();
     const { from, to, bucket } = historyWindow(range);
+    const requested = { from: Date.parse(from), to: Date.parse(to) };
     const signal = AbortSignal.any([
       controller.signal,
       AbortSignal.timeout(15000),
@@ -24,19 +41,28 @@ export function useHistory(deviceId: string, range: HistoryRange) {
     void api.history(deviceId, from, to, bucket, signal).then(
       ({ points }) => {
         if (!controller.signal.aborted)
-          setResult({ data: points, error: null, key });
+          setResult({ data: points, error: null, key, window: requested });
       },
       (cause: unknown) => {
         if (!controller.signal.aborted)
-          setResult({ data: [], error: message(cause), key });
+          setResult({
+            data: [],
+            error: message(cause),
+            key,
+            window: requested,
+          });
       },
     );
     return () => controller.abort();
   }, [deviceId, range, key]);
+  const current = result?.key === key ? result : null;
   return {
-    points: result?.key === key ? result.data : [],
-    error: result?.key === key ? result.error : null,
-    loading: result?.key !== key,
+    points: current?.data ?? [],
+    /** `from`/`to` of the request behind `points`; `null` while loading. */
+    from: current?.window.from ?? null,
+    to: current?.window.to ?? null,
+    error: current?.error ?? null,
+    loading: !current,
     retry: () => setAttempt((value) => value + 1),
   };
 }

@@ -1,0 +1,95 @@
+/* The whole button is the hit target (≥44px); the visible track sits inside it. */
+.switch {
+  --switch-ease: cubic-bezier(0.2, 0, 0, 1);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  flex-shrink: 0;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-control);
+  background: transparent;
+  color: var(--color-text);
+  cursor: pointer;
+}
+.switch[data-labelled] {
+  justify-content: space-between;
+  width: 100%;
+  padding: 0 8px 0 12px;
+  transition: background-color 160ms var(--ease-out);
+}
+.switch[data-labelled]:hover {
+  background: var(--color-surface-hover);
+}
+.label {
+  font-size: var(--font-size-body);
+  font-weight: 500;
+}
+.track {
+  position: relative;
+  display: block;
+  width: 48px;
+  height: 28px;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-pill);
+  background: var(--color-surface-hover);
+  transition:
+    background-color 220ms var(--switch-ease),
+    border-color 220ms var(--switch-ease);
+}
+.switch[aria-checked='true'] .track {
+  border-color: var(--color-primary);
+  background: var(--color-primary-soft);
+}
+.knob {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--color-surface);
+  box-shadow: var(--shadow-control);
+  color: var(--color-warning-text);
+  transition:
+    transform 220ms var(--switch-ease),
+    color 220ms var(--switch-ease);
+}
+.switch[aria-checked='true'] .knob {
+  color: var(--color-primary);
+  transform: translateX(20px);
+}
+/* Both icons share the knob's centre; one fades and turns in as the other leaves. */
+.knob svg {
+  grid-area: 1 / 1;
+  transition:
+    opacity 180ms var(--switch-ease),
+    transform 180ms var(--switch-ease);
+}
+.moon,
+.switch[aria-checked='true'] .sun {
+  opacity: 0;
+  transform: rotate(-90deg) scale(0.6);
+}
+.switch[aria-checked='true'] .moon {
+  opacity: 1;
+  transform: none;
+}
+.switch:active .knob {
+  box-shadow:
+    var(--shadow-control),
+    0 0 0 4px color-mix(in srgb, var(--color-primary) 18%, transparent);
+}
+@media (prefers-reduced-motion: reduce) {
+  .switch,
+  .track,
+  .knob,
+  .knob svg {
+    transition: none;
+  }
+}

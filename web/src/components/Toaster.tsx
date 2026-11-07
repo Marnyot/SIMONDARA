@@ -57,7 +57,7 @@ function Toast({
       <Icon size={20} aria-hidden="true" className={styles.icon} />
       <p>{message}</p>
       {kind === 'newDevice' ? (
-        <Link
+        <Link viewTransition
           to={newRoomUrl(deviceId)}
           className={ui.button}
           data-variant="secondary"

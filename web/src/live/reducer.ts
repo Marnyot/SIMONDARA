@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import {
+  notificationsSchema,
   deviceIdSchema,
   deviceStateSchema,
   roomsPayloadSchema,
@@ -9,6 +10,7 @@ import { statusAdvice } from '../features/beranda/statusAdvice';
 import { roomStatus } from '../features/kamar/rooms';
 import { faultLabels } from './status';
 import type {
+  Notifications,
   DeviceState,
   Room,
   RoomsPayload,
@@ -33,6 +35,7 @@ export interface LiveNotice {
 }
 export const MAX_NOTICES = 3;
 export interface LiveState {
+  notifications?: Notifications | null;
   rooms: Room[];
   unregistered: UnregisteredDevice[];
   connection: ConnectionStatus;
@@ -64,6 +67,7 @@ export type LiveAction =
   | { type: 'state'; deviceId: string; data: DeviceState; at: string }
   | { type: 'telemetry'; deviceId: string; data: Telemetry; at: string }
   | { type: 'online'; deviceId: string; online: boolean; at: string }
+  | { type: 'notifications'; data: Notifications }
   | { type: 'roomSaved'; room: Room }
   | { type: 'roomDeleted'; deviceId: string }
   | { type: 'dismissNotice'; id: number }
@@ -79,6 +83,8 @@ export function parseLiveEvent(
 ): LiveAction | null {
   try {
     const data: unknown = JSON.parse(raw);
+    if (type === 'notifications')
+      return { type, data: notificationsSchema.parse(data) };
     if (type === 'rooms')
       return {
         type,
@@ -163,6 +169,8 @@ const sameState = (a: DeviceState | null, b: DeviceState) =>
 
 export function liveReducer(current: LiveState, action: LiveAction): LiveState {
   switch (action.type) {
+    case 'notifications':
+      return { ...current, notifications: action.data };
     case 'rooms': {
       if (action.source === 'rest' && current.streamedRooms) return current;
       const known = new Map(current.rooms.map((room) => [room.deviceId, room]));
@@ -284,7 +292,7 @@ export function liveReducer(current: LiveState, action: LiveAction): LiveState {
         rooms: exists
           ? current.rooms.map((item) =>
               item.deviceId === room.deviceId
-                ? { ...item, name: room.name }
+                ? { ...item, name: room.name, notify: room.notify }
                 : item,
             )
           : [...current.rooms, room],

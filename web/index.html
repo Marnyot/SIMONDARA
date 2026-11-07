@@ -6,7 +6,25 @@
       name="viewport"
       content="width=device-width, initial-scale=1.0, viewport-fit=cover"
     />
-    <meta name="theme-color" content="#0E7C66" />
+    <meta name="theme-color" content="#F6F6F3" />
+    <script>
+      // Apply the theme before first paint; keep in sync with src/components/theme.ts.
+      // A saved choice wins, otherwise the OS setting (followed live by theme.ts).
+      (function () {
+        var saved = null;
+        try {
+          saved = localStorage.getItem('simondara-theme');
+        } catch (error) {}
+        var dark =
+          saved === 'dark' ||
+          (saved !== 'light' &&
+            window.matchMedia('(prefers-color-scheme: dark)').matches);
+        document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+        document
+          .querySelector('meta[name="theme-color"]')
+          .setAttribute('content', dark ? '#141816' : '#F6F6F3');
+      })();
+    </script>
     <meta
       name="description"
       content="Pantau kualitas udara ruangan dan kendalikan perangkat SIMONDARA."
@@ -17,6 +35,13 @@
       content="black-translucent"
     />
     <meta name="apple-mobile-web-app-title" content="SIMONDARA" />
+    <link
+      rel="preload"
+      href="/fonts/schibsted-grotesk-latin-wght.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
     <link rel="icon" type="image/svg+xml" href="/logo.svg" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <title>SIMONDARA — Sistem Monitoring Udara</title>
