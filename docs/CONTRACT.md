@@ -27,6 +27,7 @@ Nilai:
   - `2` MQ-135: tegangan A0 di bawah ambang valid (sensor lepas) atau ADC mentok (pembagi tegangan bermasalah). Tidak termasuk masa pemanasan.
   - `4` LCD: modul I2C tidak menjawab (dicek berkala ±5 dtk; firmware mencoba inisialisasi ulang saat kembali menjawab).
   - Aktuator (kipas/relay, buzzer, LED) tidak punya umpan balik sehingga tidak dapat dideteksi.
+- Buzzer active low dimatikan dengan melepas pin (high-Z/`INPUT`), bukan menulis HIGH, agar modul yang dicatu 5V benar-benar diam; dinyalakan dengan `OUTPUT` + LOW.
   - Backend menerima `state` tanpa `fault` (firmware lama) sebagai `fault: 0`.
 
 ## Multi-kamar
@@ -59,7 +60,12 @@ Base `/api`. Auth: cookie `httpOnly` `session` setelah login. Semua endpoint kec
 | POST | `/api/rooms/:deviceId/cmd` | subset `{"mode","fan","led","buzzer","mute"}` | 202; 400 field/nilai tidak valid |
 | GET | `/api/stream` | – | SSE semua kamar terdaftar, lihat bawah |
 
-`Room` = `{"deviceId":"kos-01","name":"Kamar 1","createdAt":"ISO","online":true,"state":{...}|null,"telemetry":{...}|null,"updatedAt":"ISO"|null}`.
+| GET | `/api/notifications` | – | `Notifications` |
+| PATCH | `/api/notifications` | `{"enabled":bool}` dan/atau `{"snoozeMinutes":15..1440}` / `{"snoozeMinutes":0}` (batalkan jeda) | 200 `Notifications`; 400 |
+
+`Room` = `{"deviceId":"kos-01","name":"Kamar 1","createdAt":"ISO","notify":true,"online":true,"state":{...}|null,"telemetry":{...}|null,"updatedAt":"ISO"|null}`. `PATCH /api/rooms/:deviceId` juga menerima `{"notify":bool}` (boleh bersama `name`).
+
+`Notifications` = `{"enabled":true,"snoozedUntil":"ISO"|null}` (pengaturan global Telegram; `snoozedUntil` lampau dikembalikan `null`).
 
 Endpoint lama satu-perangkat (`/api/state`, `/api/history`, `/api/events`, `/api/cmd`) dihapus.
 
@@ -69,7 +75,8 @@ Setiap event membawa `deviceId`:
 - `telemetry` → payload MQTT + `at` ISO + `deviceId`
 - `state` → payload `state` + `deviceId`
 - `online` → `{"deviceId":"...","online":true|false}`
-- `rooms` → `{"rooms":[Room],"unregistered":[...]}` saat kamar ditambah/diubah/dihapus atau perangkat baru terdeteksi
+- `rooms` → `{"rooms":[Room],"unregistered":[...]}` saat kamar ditambah/diubah/dihapus (termasuk `notify`) atau perangkat baru terdeteksi
+- `notifications` → `Notifications` saat pengaturan global berubah (web atau Telegram) dan saat jeda berakhir; juga dikirim saat connect
 
 Saat connect, backend langsung kirim `rooms` lalu snapshot `state`, `online`, dan `telemetry` terakhir tiap kamar terdaftar. Data perangkat tidak terdaftar tidak dialirkan selain lewat `rooms.unregistered`.
 
@@ -77,6 +84,8 @@ Saat connect, backend langsung kirim `rooms` lalu snapshot `state`, `online`, da
 
 - Notifikasi Bahaya / kembali Aman / offline >60 dtk / kembali online hanya untuk kamar terdaftar, diawali nama kamar (mis. `Kamar 2: BAHAYA ...`).
 - Gangguan perangkat keras: saat bit `fault` baru muncul → `Kamar 2: Gangguan <komponen> ...`; saat semua bit yang sebelumnya aktif hilang → `Kamar 2: <komponen> normal kembali`. Nama komponen: Sensor suhu/kelembapan (DHT11), Sensor gas (MQ-135), Layar LCD. `/status` menyebut gangguan aktif.
+- Saklar notifikasi (DB, bertahan setelah restart; migrasi menambah `rooms.notify` default 1 dan pengaturan global default aktif): notifikasi otomatis (Bahaya/Aman/offline/online/gangguan) hanya dikirim bila global `enabled`, tidak sedang dijeda, dan `notify` kamar aktif. Notifikasi yang tertahan dibuang (tidak dikirim belakangan). Balasan perintah bot selalu dikirim.
+- `/notif_off [kamar]`, `/notif_on [kamar]`: tanpa argumen = global, dengan argumen = per kamar. `/notif_jeda [menit]` (default 60, 15–1440) jeda global; `/notif_jeda 0` batalkan. `/status` menyebut status notifikasi (global, jeda sampai jam berapa, kamar yang dimatikan).
 - `/status` → ringkasan semua kamar. `/status <kamar>` → detail satu kamar.
 - `/kipas_on <kamar>`, `/kipas_off <kamar>`, `/otomatis <kamar>`; `<kamar>` = `deviceId` atau nama (case-insensitive). Argumen boleh dihilangkan jika hanya ada 1 kamar; jika >1 kamar dan tanpa argumen → balas daftar kamar.
 
