@@ -1,48 +1,33 @@
 # Firmware SIMONDARA (NodeMCU ESP8266)
 
-Firmware membaca DHT11 dan MQ-135, menentukan status kualitas udara (Aman/Waspada/Bahaya),
-mengendalikan LED, buzzer, dan relay kipas, menampilkan data di LCD 16×2, serta bertukar pesan
-dengan backend melalui MQTT sesuai [`docs/CONTRACT.md`](../docs/CONTRACT.md). Logika lokal
-(sensor, status, aktuator, LCD) tetap berjalan ketika Wi-Fi atau broker terputus.
+Logika lokal mengikuti sketch tim `simondara_full.ino` (SIMONDARA v2): sensor,
+status/histeresis, relay/buzzer/LED, LCD dan menu Serial. Cloud tetap memakai Wi-Fi,
+MQTT EMQX TLS, topik/payload [`docs/CONTRACT.md`](../docs/CONTRACT.md), LWT dan fault.
+Tidak ada perubahan pada `net.*` atau kredensial.
 
-## Struktur
+## Modul dan wiring
 
-```
-firmware/
-├── Makefile               make test | make compile | make upload PORT=...
-├── secrets.example.h      contoh kredensial -> salin ke simondara/secrets.h
-├── simondara/
-│   ├── simondara.ino      setup/loop, parsing cmd (ArduinoJson), publish state & telemetri
-│   ├── config.h           pin, polaritas aktuator, ambang, kalibrasi MQ-135, interval
-│   ├── air_status.*       logika status + histeresis + aturan aktuator (murni, dites di host)
-│   ├── fault.*            penentu bitmask gangguan perangkat keras (murni, dites di host)
-│   ├── sensors.*          DHT11 (validasi + retry), MQ-135 (rata-rata 10 sampel, pemanasan, kalibrasi R0)
-│   ├── actuators.*        LED, buzzer, relay (level aman sebelum pinMode)
-│   ├── display.*          LCD I2C (deteksi alamat 0x27/0x3F, probe berkala, init ulang)
-│   ├── net.*              Wi-Fi, NTP, MQTT (TLS/non-TLS), reconnect dengan backoff
-│   ├── ca_cert.h          DigiCert Global Root G2 + Global Root CA untuk EMQX
-│   └── log.h              logging Serial 115200
-└── test/                  test_air_status.cpp, test_fault.cpp
-```
+`config.h`: pin/konstanta; `sensors.*`: DHT, MQ135, EEPROM dan kalibrasi;
+`air_status.*`: status dan keputusan aktuator murni; `actuators.*`: pin keluaran;
+`display.*`: LCD; `net.*`: Wi-Fi/NTP/TLS/MQTT; `fault.*`: bitmask;
+`simondara.ino`: integrasi, perintah dan publikasi.
 
-## Wiring ringkas
-
-| Komponen | Pin NodeMCU | Catatan |
+| Komponen | Pin NodeMCU | Polaritas / catatan |
 | --- | --- | --- |
-| DHT11 data | D4 (GPIO2) | VCC 3V3; pull-up modul menjaga D4 HIGH saat boot |
-| MQ-135 AO | A0 | lewat pembagi dua resistor sama (faktor 2), VCC ke VIN 5 V; RL modul 1 kΩ (kode 102) |
-| LCD I2C SDA / SCL | D2 / D1 | alamat 0x27, otomatis mencoba 0x3F |
-| LED hijau | D0 (GPIO16) | aktif HIGH: D0 → 220 Ω → LED → GND |
-| LED kuning | D7 (GPIO13) | aktif HIGH |
-| LED merah | D3 (GPIO0) | **aktif LOW**: 3V3 → 220 Ω → LED → D3 |
-| Buzzer aktif | D6 (GPIO12) | **aktif LOW** (modul low-level trigger); mati = pin high-Z, lihat troubleshooting |
-| Relay IN | D5 (GPIO14) | modul relay **aktif HIGH** (HIGH = kipas menyala), VCC ke VIN |
+| DHT11 DATA | D4 / GPIO2 | catu 3V3, pull-up data |
+| Relay IN | D5 / GPIO14 | aktif HIGH, kipas lewat COM–NO |
+| Buzzer | D6 / GPIO12 | aktif LOW; mati = OUTPUT HIGH, `BUZZER_OFF_HIGH_Z = false` |
+| LED hijau | D7 / GPIO13 | aktif HIGH |
+| LED kuning | D0 / GPIO16 | aktif HIGH |
+| LED merah | D8 / GPIO15 | aktif HIGH |
+| LCD SDA / SCL | D2 / D1 | I2C 100 kHz, scan alamat 1–126 seperti sketch |
+| MQ135 AO | A0 | pembagi eksternal 2,0; modul 5 V; RL 1 kΩ (102); DO tidak dipakai |
 
-Pin dan polaritas di atas mengikuti alat yang sudah diuji tim. D3 (GPIO0) dan D4 (GPIO2) harus HIGH
-saat boot, D8 (GPIO15) harus LOW (tidak dipakai). Karena itu LED merah dirangkai aktif LOW dan D4
-dipakai untuk data DHT11 yang memiliki pull-up. Firmware
-menulis level mati ke setiap pin **sebelum** `pinMode(OUTPUT)`. Bila rangkaian berbeda, ubah
-konstanta `LED_*_ACTIVE_LOW`, `BUZZER_ACTIVE_LOW`, dan `RELAY_ACTIVE_LOW` di `config.h`.
+`kUseLeds = false` karena LED belum dipasang. Pin LED tidak dijadikan OUTPUT;
+state LED tetap dihitung dan dilaporkan (0 mati, 1 hijau, 2 kuning, 3 merah).
+Level OFF buzzer/relay ditulis sebelum `pinMode(OUTPUT)`.
+Scan LCD memilih kandidat PCF8574 0x20–0x27 / 0x38–0x3F dengan prioritas yang
+sama seperti `cariAlamatLcd()`. Probe berkala 5 detik mempertahankan fault/pemulihan cloud.
 
 ## Library dan toolchain
 
@@ -112,123 +97,128 @@ Atau lewat Makefile: `make -C firmware compile`, `make -C firmware upload PORT=/
 
 ## Test host
 
-```bash
+```sh
 make -C firmware test
 ```
 
-Mengompilasi `simondara/air_status.cpp` dan `simondara/fault.cpp` dengan
-`c++ -std=c++17 -Wall -Wextra -Werror` dan menguji klasifikasi ambang, status terburuk, histeresis
-kipas 1000/900 ppm, aturan aktuator, mute, penanganan cmd, dan penentu gangguan perangkat keras.
+Tes C++17 (`-Wall -Wextra -Werror`) memeriksa batas status dan histeresis ketiga
+sensor, kipas dari AMAN/WASPADA/BAHAYA, bip 300 ms/5 detik termasuk overflow
+`millis()`, transisi manual/otomatis, mute/cmd dan fault.
 
-## Kalibrasi R0 MQ-135
+## Status dan aktuator
 
-1. Sensor baru sebaiknya dipanaskan (burn-in) 24–48 jam terlebih dahulu.
-2. Letakkan perangkat di udara bersih (luar ruangan / ruangan berventilasi baik, ±420 ppm CO₂).
-3. Buka Serial Monitor 115200, tunggu pemanasan 3 menit selesai, lalu ketik `cal` + Enter.
-   Firmware merata-ratakan R0 selama 60 detik dan mencetak, misalnya:
-   ```
-   [cal] selesai: 300 sampel, R0 = 81.27 kOhm
-   [cal] salin ke config.h: constexpr float kMq135R0KOhm = 81.27f;
-   ```
-4. Salin nilai tersebut ke `kMq135R0KOhm` di `config.h`, lalu compile dan upload ulang.
+| Parameter | AMAN | WASPADA | BAHAYA |
+| --- | --- | --- | --- |
+| Suhu | 18–30 °C | <18 atau >30 sampai 33 | >33 °C |
+| Kelembapan | 40–60 % | 30–<40 atau >60–70 | <30 atau >70 % |
+| Gas | ≤1000 ppm | >1000 sampai 2000 | >2000 ppm |
 
-Alternatif tanpa perintah serial: compile dengan
-`--build-property "compiler.cpp.extra_flags=-DSIMONDARA_CALIBRATION=1"` sehingga sesi kalibrasi
-berulang otomatis setelah pemanasan.
+Status akhir adalah yang terburuk. Memburuk langsung; membaik memakai fungsi
+`hysteresis(previous, raw, strict)` persis sketch, dengan margin 0,5 °C / 2 % /
+100 ppm. Contoh: BAHAYA suhu baru turun pada ≤32,5 °C; gas WASPADA baru AMAN
+pada ≤900 ppm. Nilai NaN/belum tersedia dan gas belum siap dianggap AMAN.
+DHT gagal mempertahankan nilai terakhir dan status lokalnya, seperti sketch;
+telemetri menunggu pembacaan terbaru yang valid.
 
-Rumus: `Rs = RL × (Vc − Vao) / Vao`, dengan `Vao = ADC/1023 × 3,2 V × 1,5`, lalu
-`ppm = 116,602 × (Rs/R0)^−2,769`. R0 = Rs / (420/116,602)^(1/−2,769) di udara bersih.
+- Kipas otomatis menyala saat BAHAYA, mati saat AMAN; WASPADA mempertahankan
+  latch otomatis. Gas >1000 ppm sendiri tidak menyalakan kipas.
+- Buzzer BAHAYA berbip 300 ms setiap 5000 ms bila tidak bisu. Bip pertama langsung
+  saat masuk BAHAYA. LED otomatis = status + 1, termasuk selama pemanasan gas.
+- DHT tetap ikut menentukan status selama pemanasan MQ135.
+- Masuk manual mempertahankan kipas dan LED saat ini, buzzer manual awalnya mati.
+  Perintah berikutnya mengubah keluaran manual. `a` menginisialisasi ulang latch
+  kipas (ON hanya jika BAHAYA) dan waktu bip, sama seperti sketch.
+- `mode`/`mute` cloud selalu diterima; `fan`/`led`/`buzzer` hanya pada mode manual.
+  Mode diproses dahulu, sehingga `{"mode":1,"fan":1}` langsung berlaku.
+  Field tidak valid diabaikan; JSON rusak/payload >256 byte ditolak.
 
-## Perilaku
+## MQ135, pemanasan dan kalibrasi
 
-- **Pemanasan MQ-135 (3 menit):** LCD menampilkan bilah progres dan sisa waktu. Status dan aktuator
-  mode otomatis belum aktif (semua aktuator mati), telemetri belum dikirim, state dikirim dengan
-  status 0. Mode manual tetap dapat dipakai.
-- **Status** = parameter terburuk di antara parameter yang valid (tabel di README utama).
-- **Mode otomatis:** Aman → hijau, kipas & buzzer mati; Waspada → kuning, kipas tidak diubah,
-  buzzer mati; Bahaya → merah, kipas nyala, buzzer nyala kecuali `mute`. Kipas juga mengikuti
-  histeresis gas: nyala bila ppm > 1000 dan baru mati bila ppm < 900 (sehingga pada 900–1000 ppm
-  kipas tetap nyala walau status Aman). `mute` direset otomatis saat status kembali Aman.
-- **Mode manual:** kipas, LED (0–3), dan buzzer mengikuti `cmd` terakhir; status tetap dihitung dan
-  dilaporkan.
-- **cmd:** `mode` dan `mute` selalu diterima; `fan`/`led`/`buzzer` hanya pada mode manual dan
-  diproses setelah `mode`, sehingga `{"mode":1,"fan":1}` langsung berlaku. Field yang bukan integer
-  atau di luar rentang diabaikan per-field; JSON rusak atau payload > 256 byte diabaikan.
-- **Sensor:** DHT11 dibaca tiap 2 dtk; gagal diulang setelah 1,1 dtk dan baru dianggap tidak valid
-  setelah 3 kegagalan beruntun, atau langsung bila nilainya di luar rentang. MQ-135 disampel tiap
-  200 ms, rata-rata bergulir 10 sampel. Data tidak valid ditampilkan sebagai error di LCD dan
-  telemetri tidak dikirim.
-- **LCD (±2 dtk):** `Suhu:29.4 Lb:62%` / `Gas:820 Aman`. Satuan "C" dihilangkan karena
-  `Suhu:29.4C Lb:62%` (17 karakter) tidak muat di 16 kolom. Glyph antena bersilang di kolom 16
-  menandakan broker offline.
-- **MQTT:** client ID `simondara-<DEVICE_ID>-<chipId>`, keep-alive 30 dtk, LWT
-  `simondara/<id>/online` = `"0"` (retained, QoS1), `"1"` retained saat connect, subscribe `cmd`
-  QoS1, `state` retained saat connect dan saat berubah (termasuk saat `fault` berubah), telemetri
-  tiap 10 dtk (`ts` = epoch NTP, 0 bila belum sinkron).
-- **Reconnect:** Wi-Fi dan MQTT memakai backoff eksponensial 2 dtk → 60 dtk berbasis `millis()`.
-  Satu percobaan connect MQTT (terutama handshake TLS) dapat memblokir loop beberapa detik;
-  di luar itu loop tidak memakai `delay()`.
+Gas dibaca tiap 1 detik: rata-rata 64 sampel (jeda 500 µs), lalu EMA α=0,2.
+ADC valid `2 ≤ ADC < 1015`. Tegangan AO dibatasi 0,001…4,999 V sebelum menghitung Rs,
+sama seperti sketch (tidak menjadikan AO ≥5 V sebagai fault terpisah).
 
-### Diagnosis gangguan perangkat keras
-
-Setiap payload `state` memuat `fault`, bitmask gangguan yang terdeteksi (0 = semua normal):
-
-```json
-{"status":0,"fan":0,"mode":0,"led":1,"buzzer":0,"mute":0,"fault":0}
+```
+Vao = ADC / 1023 × 3,3 V × 2,0
+Rs = RL × (5,0 − Vao) / Vao
+ppm = 116.6020682 × (Rs / R0)^(-2.769034857)
+R0 = Rs_bersih × (420 / 116.6020682)^(1 / 2.769034857)
 ```
 
-| Bit | Komponen | Terdeteksi bila | Pulih bila | LCD | Periksa |
-| --- | --- | --- | --- | --- | --- |
-| 1 | DHT11 | gagal baca ≥ 3 kali beruntun (±3 dtk), atau nilai di luar −10…60 °C / 0…100 % | ada pembacaan valid | `DHT ERR` (saat pemanasan `Panas DHT ERR`) | kabel data D4, catu 3V3 |
-| 2 | MQ-135 | rata-rata ADC < 2 (sensor lepas), ADC ≥ 1015 (mentok), atau tegangan AO ≥ 5 V (pembagi bermasalah), bertahan 10 sampel beruntun (±2 dtk) | kondisi normal 10 sampel beruntun | `MQ ERR` | kabel A0, pembagi tegangan, catu VIN 5 V |
-| 4 | LCD | modul tidak menjawab I2C di 0x27/0x3F (probe ±5 dtk), termasuk tidak ada sejak boot | modul menjawab lagi; LCD diinisialisasi ulang dan isinya tampil lagi ≤ 2 dtk | – | kabel SDA D2 / SCL D1, catu modul |
+Pemanasan adaptif selesai bila perubahan EMA ADC <1 % dalam jendela 10 detik,
+minimum 20 detik, maksimum 180 detik sejak boot. `w` melewati pemanasan.
+DHT dibaca tiap 2 detik, LCD diperbarui tiap 1 detik.
 
-- `state` dikirim (retained) setiap `fault` berubah. Log Serial mencetak `[fault] <komponen> terganggu`
-  saat gangguan muncul dan `[fault] <komponen> pulih` saat kembali normal. Perintah `status` mencetak
-  nilai `fault` saat ini.
-- Bit 2 tidak dilaporkan selama pemanasan 3 menit dan selama kalibrasi R0. Bila gangguan sudah aktif
-  saat `cal` dimulai, bit 2 hilang selama kalibrasi dan muncul lagi setelahnya jika sensor masih terganggu.
-- Ambang MQ-135 memakai count ADC karena RL 1 kΩ membuat ADC udara bersih hanya ±8–10 (±0,06 V).
-  Ambang ada di `kMq135AdcMinValid` dan `kMq135AdcRailMin` (`config.h`); sesuaikan bila rangkaian berbeda.
-- Tegangan AO ≥ 5 V setara ADC ±799 dengan pembagi 2,0, jadi pada alat ini batas tersebut tercapai
-  lebih dulu daripada ADC mentok.
-- Kipas/relay, buzzer, dan LED tidak punya umpan balik sehingga gangguannya tidak dapat dideteksi.
-- Kehilangan catu LCD di antara dua probe (< 5 dtk) tidak terdeteksi: layar tetap kosong sampai
-  firmware di-reset.
+1. Letakkan alat di udara bersih, jauh dari napas/asap.
+2. Tunggu pemanasan selesai, lalu ketik `k` di Serial 115200 baud.
+3. Firmware mengambil 30 sampel Rs dengan jarak 1 detik. ADC tidak valid membatalkan
+   sesi. Sebaran `(Rs_max − Rs_min)/Rs_rata × 100` >3 % menghasilkan peringatan.
+4. R0 langsung dipakai dan disimpan di EEPROM 64 byte, tanpa edit kode/upload ulang.
+   `r` menampilkan R0/Rs; `x` menghapus R0 dan menonaktifkan gas sampai kalibrasi lagi.
 
-### Troubleshooting: buzzer tidak bisa dibisukan
+Struktur EEPROM sama dengan sketch: `{uint32_t kode; float r0; float rl; float faktor;}`,
+kode `0x53494D44`, offset 0. RL dan pembagi harus cocok (toleransi 0,001), R0
+harus finite dan positif; metadata NaN/Inf ditolak. Jika EEPROM kosong/tidak valid,
+R0 cadangan tim **133,4 kΩ** dipakai saat boot. Setelah `x`, R0 tetap 0 untuk sesi
+berjalan; reboot memakai cadangan lagi sebagaimana mekanisme cadangan sketch.
+Nilai ppm lokal tidak dibulatkan sebelum klasifikasi; LCD/plotter dan telemetri
+membatasi nilai tampilan/payload ke 5000. LCD menunjukkan `>5000ppm` bila terlampaui.
 
-Modul buzzer active low yang VCC-nya ke **VIN (5 V)** tidak benar-benar diam bila SIG ditulis HIGH,
-karena HIGH ESP8266 hanya 3,3 V dan transistor modul masih menghantar. Karena itu firmware
-(`BUZZER_OFF_HIGH_Z = true` di `config.h`) mematikan buzzer dengan melepas pin (`pinMode(INPUT)`,
-high-Z) dan menyalakannya dengan menulis LOW lalu `pinMode(OUTPUT)`.
+## LCD dan Serial
 
-1. Cek VCC modul buzzer: VIN (5 V) atau 3V3. Untuk 5 V, flag harus `true`. Bila modul dicatu 3V3
-   atau dirangkai active high, set `BUZZER_OFF_HIGH_Z = false` (pin kembali ditulis HIGH/LOW biasa).
-2. Saat boot, Serial Monitor harus menampilkan `[act] buzzer mati (high-Z)`.
-3. Kirim `{"mute":1}` saat status Bahaya (mode otomatis). Log yang diharapkan, berurutan:
-   ```
-   [cmd] diterima: {"mute":1}
-   [cmd] mute -> 1 (mode otomatis, status Bahaya, buzzer 0)
-   [act] buzzer mati (high-Z)
-   [mqtt] state {"status":2,"fan":1,"mode":0,"led":3,"buzzer":0,"mute":1,"fault":0}
-   ```
-4. Bila log di atas muncul tetapi buzzer tetap bunyi, masalahnya di kelistrikan: ukur tegangan D6
-   saat mati (harus mengambang/ditarik ke VCC oleh modul) dan pastikan GND modul satu dengan
-   NodeMCU. Modul tanpa pull-up internal perlu resistor 10 kΩ dari SIG ke VCC modul.
-5. Bila `[cmd] mute` tidak muncul, cmd tidak sampai ke perangkat: cek koneksi MQTT dan topik `cmd`.
+Splash dua detik: `SIMONDARA` / `Monitor aktif`. Dua baris normal sama dengan
+`perbaruiLcd()` sketch (dipotong/pad ke 16 kolom):
 
-### Keterbatasan yang diketahui
+- Baris 1: `S:%.1fC L:%.0f%%`, tambah `?` saat DHT gagal dengan data lama,
+  atau `DHT belum terbaca` bila belum ada nilai.
+- Baris 2: `Pemanasan %lus`, `Gas blm kalibr.`, `Cek sinyal MQ135`,
+  `>5000ppm <STATUS>`, atau `%4.0fppm <STATUS>`; status huruf besar.
 
-- PubSubClient hanya dapat **publish** dengan QoS0. `state` dikirim retained (subscriber selalu
-  mendapat nilai terakhir) dan dikirim ulang setiap kali tersambung kembali, sehingga kontrak
-  tetap terpenuhi secara fungsional. LWT dan subscribe `cmd` memakai QoS1 penuh.
-- Estimasi ppm MQ-135 bersifat indikatif (setara CO₂), bukan pengukuran CO₂ terkalibrasi.
+Informasi Wi-Fi/MQTT tetap di Serial dan tidak menimpa LCD. Log status tiap dua
+detik memakai format `cetakStatus()` sketch: mode, suhu/status, lembap/status,
+ADC, gas/status, STATUS total, Kipas ON/OFF dan Buzzer OFF/BIP/BISU/ON.
 
-## Perintah Serial
+Perintah satu karakter langsung diproses, tanpa perlu Enter; huruf besar diterima.
 
 | Perintah | Fungsi |
 | --- | --- |
-| `status` | cetak heap, koneksi, pembacaan sensor, Rs/R0, mode, status, aktuator, fault |
-| `cal` | kalibrasi R0 60 detik di udara bersih |
-| `help` | daftar perintah |
+| `a` | mode otomatis |
+| `n` / `f` | kipas manual ON / OFF |
+| `1` / `0` | buzzer manual ON / OFF |
+| `c` | siklus LED manual: mati → hijau → kuning → merah |
+| `m` | toggle bisu buzzer otomatis |
+| `k` | kalibrasi MQ135, 30 sampel di udara bersih |
+| `r` | info kalibrasi R0, RL, pembagi, Rs/R0 |
+| `x` | hapus R0 tersimpan |
+| `w` | lewati pemanasan |
+| `p` | toggle Serial Plotter (`ppm:` atau `ADC:`) |
+| `s` | pindai dan hubungkan LCD lagi |
+| `b` | toggle backlight LCD |
+| `h` | menu dan ambang |
+
+## Cloud dan perbedaan sengaja dari sketch lokal
+
+- Wi-Fi/NTP/MQTT TLS EMQX tetap aktif; sertifikat BearSSL divalidasi, tidak ada
+  `setInsecure()`. `net.*` mempertahankan reconnect/backoff dan topik/payload.
+- Telemetri tiap 10 detik hanya jika DHT terbaru dan gas siap/valid. `state`
+  retained dikirim saat berubah dan connect; LWT `online="0"` retained QoS1,
+  connect `online="1"`, subscribe `cmd` QoS1. PubSubClient publish memakai QoS0.
+- **Mute reset saat kembali AMAN**, juga bila mute berasal dari Serial; sketch
+  lokal mempertahankan bisu sampai `m` ditekan lagi. Ini mengikuti perilaku cloud/web.
+- **R0 cadangan 133,4 kΩ**, sedangkan sketch acuan menonaktifkan cadangan (0).
+- Kalibrasi 30 sampel dijalankan bertahap, bukan `delay(1000)` yang memblokir
+  selama 30 detik, agar MQTT tetap dilayani. Selama sesi, pembacaan/status lokal
+  dibekukan dan buzzer fisik mati seperti sketch; perintah cloud tetap dilayani.
+- Fault bitmask tetap dilaporkan: **1** DHT gagal ≥3 kali beruntun atau nilai di luar
+  −10…60 °C / 0…100 %; **2** EMA ADC di luar [2,1015) setelah pemanasan, di luar
+  kalibrasi; **4** LCD tidak menjawab probe I2C (termasuk absen sejak boot).
+  Data DHT lama tetap dipakai lokal saat baca gagal, tetapi tidak dipublish sebagai
+  telemetri baru. LCD dipindai/init ulang otomatis untuk pemulihan.
+- Pemadaman buzzer sekarang **OUTPUT HIGH** sesuai sketch yang terbukti; ini
+  sengaja menggantikan panduan high-Z lama dalam kontrak checkout main. Topik dan
+  bentuk payload kontrak tidak berubah.
+- Sampling gas memblokir sekitar 32 ms per detik. Percobaan koneksi MQTT/TLS
+  masih bisa memblokir beberapa detik (perilaku jaringan lama); waktu bip dapat
+  bergeser selama handshake. Pengujian alat tetap diperlukan untuk timing fisik.
+
+Estimasi MQ135 adalah ppm setara CO₂, bukan pengukuran laboratorium.

@@ -1,6 +1,8 @@
 // Test host untuk logika status & histeresis (firmware/simondara/air_status.*).
 // Jalankan: make -C firmware test
 #include <cstdio>
+#include <cmath>
+#include <cstdint>
 
 #include "air_status.h"
 
@@ -18,7 +20,7 @@ static int checks = 0;
     }                                                                \
   } while (0)
 
-static Readings reading(float t, float h, int ppm) { return {true, t, h, true, ppm}; }
+static Readings reading(float t, float h, float ppm) { return {true, t, h, true, ppm}; }
 
 static void testClassifyTemperature() {
   CHECK(classifyTemperature(17.9f) == kWarning);
@@ -58,55 +60,112 @@ static void testWorstParameterWins() {
   // Parameter tidak valid diabaikan.
   CHECK(worstStatus({false, 40, 10, true, 500}, &s) && s == kSafe);
   CHECK(worstStatus({true, 34, 50, false, 5000}, &s) && s == kDanger);
-  CHECK(!worstStatus({false, 0, 0, false, 0}, &s));
+  CHECK(worstStatus({false, 0, 0, false, 0}, &s) && s == kSafe);
 }
 
-static void testGasHysteresis() {
-  bool latch = false;
-  latch = nextGasFanLatch(latch, 1000);
-  CHECK(!latch);
-  latch = nextGasFanLatch(latch, 1001);
-  CHECK(latch);
-  latch = nextGasFanLatch(latch, 950);
-  CHECK(latch);
-  latch = nextGasFanLatch(latch, 900);
-  CHECK(latch);
-  latch = nextGasFanLatch(latch, 899);
-  CHECK(!latch);
-  latch = nextGasFanLatch(latch, 950);
-  CHECK(!latch);
-}
+static void testSensorHysteresis() {
+  ControlState s;
+  evaluate(s, reading(34, 50, 500));
+  CHECK(s.status == kDanger);
+  evaluate(s, reading(32.6f, 50, 500));
+  CHECK(s.status == kDanger);
+  evaluate(s, reading(32.5f, 50, 500));
+  CHECK(s.status == kWarning);
+  evaluate(s, reading(29.6f, 50, 500));
+  CHECK(s.status == kWarning);
+  evaluate(s, reading(29.5f, 50, 500));
+  CHECK(s.status == kSafe);
+  evaluate(s, reading(17, 50, 500));
+  evaluate(s, reading(18.4f, 50, 500));
+  CHECK(s.status == kWarning);
+  evaluate(s, reading(18.5f, 50, 500));
+  CHECK(s.status == kSafe);
 
+  evaluate(s, reading(25, 29, 500));
+  evaluate(s, reading(25, 31.9f, 500));
+  CHECK(s.status == kDanger);
+  evaluate(s, reading(25, 32, 500));
+  CHECK(s.status == kWarning);
+  evaluate(s, reading(25, 41.9f, 500));
+  CHECK(s.status == kWarning);
+  evaluate(s, reading(25, 42, 500));
+  CHECK(s.status == kSafe);
+  evaluate(s, reading(25, 71, 500));
+  evaluate(s, reading(25, 68.1f, 500));
+  CHECK(s.status == kDanger);
+  evaluate(s, reading(25, 68, 500));
+  CHECK(s.status == kWarning);
+  evaluate(s, reading(25, 58.1f, 500));
+  CHECK(s.status == kWarning);
+  evaluate(s, reading(25, 58, 500));
+  CHECK(s.status == kSafe);
+
+  evaluate(s, reading(25, 50, 2000.1f));
+  CHECK(s.status == kDanger); // raw float, tidak dibulatkan sebelum klasifikasi
+  evaluate(s, reading(25, 50, 1900.1f));
+  CHECK(s.status == kDanger);
+  evaluate(s, reading(25, 50, 1900));
+  CHECK(s.status == kWarning);
+  evaluate(s, reading(25, 50, 900.1f));
+  CHECK(s.status == kWarning);
+  evaluate(s, reading(25, 50, 900));
+  CHECK(s.status == kSafe);
+  evaluate(s, reading(34, 75, 3000));
+  evaluate(s, {false, NAN, NAN, false, NAN});
+  CHECK(s.status == kSafe && !s.out.fan && s.out.led == kLedGreen);
+}
 static void testAutoOutputs() {
   ControlState s;
-  CHECK(s.out.led == kLedOff && !s.out.fan && !s.out.buzzer);  // sebelum evaluasi pertama
-
-  evaluate(s, reading(25, 50, 500));
+  evaluate(s, reading(25, 50, 500), 1000);
   CHECK(s.status == kSafe && s.out.led == kLedGreen && !s.out.fan && !s.out.buzzer);
-
-  evaluate(s, reading(25, 50, 1500));
-  CHECK(s.status == kWarning && s.out.led == kLedYellow && s.out.fan && !s.out.buzzer);
-
-  // Gas turun ke pita histeresis: status Aman, kipas tetap nyala.
-  evaluate(s, reading(25, 50, 950));
-  CHECK(s.status == kSafe && s.out.led == kLedGreen && s.out.fan);
-
-  evaluate(s, reading(25, 50, 850));
-  CHECK(s.status == kSafe && !s.out.fan);
-
-  evaluate(s, reading(34, 50, 500));
+  evaluate(s, reading(25, 50, 1500), 2000);
+  CHECK(s.status == kWarning && s.out.led == kLedYellow && !s.out.fan && !s.out.buzzer);
+  evaluate(s, reading(34, 50, 500), 3000);
   CHECK(s.status == kDanger && s.out.led == kLedRed && s.out.fan && s.out.buzzer);
-
-  // Waspada: kipas tidak diubah (tetap nyala dari Bahaya).
-  evaluate(s, reading(31, 50, 500));
+  refreshAutoOutputs(s, 3299);
+  CHECK(s.out.buzzer);
+  refreshAutoOutputs(s, 3300);
+  CHECK(!s.out.buzzer && s.out.fan);
+  refreshAutoOutputs(s, 7999);
+  CHECK(!s.out.buzzer);
+  refreshAutoOutputs(s, 8000);
+  CHECK(s.out.buzzer);
+  evaluate(s, reading(31, 50, 500), 9000);
   CHECK(s.status == kWarning && s.out.fan && !s.out.buzzer);
-
-  evaluate(s, reading(25, 50, 500));
+  evaluate(s, reading(25, 50, 500), 10000);
   CHECK(s.status == kSafe && !s.out.fan);
-
-  // Waspada dari Aman: kipas tetap mati.
-  evaluate(s, reading(31, 50, 500));
-  CHECK(s.status == kWarning && !s.out.fan);
+  evaluate(s, reading(34, 50, 500), 10001);
+  CHECK(s.out.buzzer); // masuk bahaya berikutnya: bip pertama langsung
+  CHECK(!autoBuzzer(kDanger, true, 0));
+  CHECK(!autoBuzzer(kWarning, false, 0));
+  CHECK(!nextAutoFan(false, kWarning));
+  CHECK(nextAutoFan(true, kWarning));
+  CHECK(!nextAutoFan(true, kSafe));
+  // millis overflow: pengurangan uint32_t tetap menghasilkan durasi bip.
+  s.beepStartMs = UINT32_MAX - 99;
+  refreshAutoOutputs(s, 199);
+  CHECK(s.out.buzzer);
+  refreshAutoOutputs(s, 200);
+  CHECK(!s.out.buzzer);
+}
+static void testManualEntryAndAutoReset() {
+  ControlState s;
+  evaluate(s, reading(34, 50, 500), 1000);
+  Command manual;
+  manual.mode = kManual;
+  applyCommand(s, manual, 1000);
+  CHECK(s.out.fan && s.out.led == kLedRed && !s.out.buzzer);
+  Command buzz;
+  buzz.buzzer = 1;
+  applyCommand(s, buzz, 1100);
+  applyCommand(s, manual, 1200); // mode manual lagi tidak memadamkan buzzer
+  CHECK(s.out.buzzer);
+  evaluate(s, reading(31, 50, 500), 1300);
+  CHECK(s.out.fan && s.out.led == kLedRed && s.out.buzzer);
+  Command automatic;
+  automatic.mode = kAuto;
+  applyCommand(s, automatic, 1400);
+  CHECK(s.status == kWarning && !s.out.fan && s.out.led == kLedYellow && !s.out.buzzer);
 }
 
 static void testMute() {
@@ -186,7 +245,7 @@ static void testAutoBeforeEvaluation() {
   c.mode = kAuto;
   c.mute = 1;
   applyCommand(s, c);
-  CHECK(!s.evaluated && s.out.led == kLedOff && !s.out.fan && !s.out.buzzer);
+  CHECK(!s.evaluated && s.out.led == kLedGreen && !s.out.fan && !s.out.buzzer);
 }
 
 static void testValidField() {
@@ -203,7 +262,8 @@ int main() {
   testClassifyHumidity();
   testClassifyGas();
   testWorstParameterWins();
-  testGasHysteresis();
+  testSensorHysteresis();
+  testManualEntryAndAutoReset();
   testAutoOutputs();
   testMute();
   testMuteResetIsPerMode();

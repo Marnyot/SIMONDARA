@@ -30,24 +30,10 @@ void initOff(const Pin& pin) {
   write(pin, false);
 }
 
-// Buzzer active low + BUZZER_OFF_HIGH_Z: mati = high-Z, nyala = LOW lalu OUTPUT
-// (latch LOW dulu agar tidak ada pulsa HIGH saat pin kembali menjadi output).
-constexpr bool kBuzzerHighZ = config::BUZZER_OFF_HIGH_Z && config::BUZZER_ACTIVE_LOW;
-
-void writeBuzzer(bool on) {
-  if (!kBuzzerHighZ) {
-    write(kBuzzer, on);
-    return;
-  }
-  if (on) {
-    digitalWrite(kBuzzer.gpio, LOW);
-    pinMode(kBuzzer.gpio, OUTPUT);
-  } else {
-    pinMode(kBuzzer.gpio, INPUT);
-  }
-}
+void writeBuzzer(bool on) { write(kBuzzer, on); }
 
 void writeLed(air::Led led) {
+  if (!config::kUseLeds) return;
   write(kGreen, led == air::kLedGreen);
   write(kYellow, led == air::kLedYellow);
   write(kRed, led == air::kLedRed);
@@ -56,14 +42,12 @@ void writeLed(air::Led led) {
 }  // namespace
 
 void begin() {
-  initOff(kGreen);
-  initOff(kYellow);
-  initOff(kRed);
-  if (kBuzzerHighZ) {
-    writeBuzzer(false);  // Serial belum aktif di sini; log mode buzzer dicetak di setup()
-  } else {
-    initOff(kBuzzer);
+  if (config::kUseLeds) {
+    initOff(kGreen);
+    initOff(kYellow);
+    initOff(kRed);
   }
+  initOff(kBuzzer);
   initOff(kRelay);
   current = {false, air::kLedOff, false};
 }
@@ -76,11 +60,7 @@ void apply(const air::Outputs& out) {
   if (out.led != current.led) writeLed(out.led);
   if (out.buzzer != current.buzzer) {
     writeBuzzer(out.buzzer);
-    if (out.buzzer) {
-      LOGF("act", "buzzer NYALA%s", kBuzzerHighZ ? " (OUTPUT LOW)" : "");
-    } else {
-      LOGF("act", "buzzer mati%s", kBuzzerHighZ ? " (high-Z)" : "");
-    }
+    LOGF("act", "buzzer %s", out.buzzer ? "NYALA" : "mati");
   }
   current = out;
 }

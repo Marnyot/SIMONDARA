@@ -29,17 +29,11 @@ bool dhtFaulted(const DhtHealth& health) {
 float mq135Volts(float adc) { return adc / 1023.0f * config::kAdcFullScaleV * config::kMq135DividerFactor; }
 
 bool mq135OutOfRange(float adc) {
-  return adc < config::kMq135AdcMinValid || adc >= config::kMq135AdcRailMin ||
-         mq135Volts(adc) >= config::kMq135SupplyV;
+  return adc < config::kMq135AdcMinValid || adc >= config::kMq135AdcRailMin || !isfinite(adc);
 }
 
 void recordMq135(Mq135Health& health, bool outOfRange) {
-  if (outOfRange == health.outOfRange) {
-    health.streak = 0;
-  } else if (++health.streak >= config::kMq135FaultConfirmSamples) {
-    health.outOfRange = outOfRange;
-    health.streak = 0;
-  }
+  health.outOfRange = outOfRange;
 }
 
 bool mq135Faulted(const Mq135Health& health, bool warm, bool calibrating) {

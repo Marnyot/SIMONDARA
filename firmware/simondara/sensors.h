@@ -1,44 +1,32 @@
-// Pembacaan DHT11 (suhu, kelembapan) dan MQ-135 (estimasi ppm setara CO2).
-//
-// Semua fungsi non-blocking: sensors::loop() dipanggil di setiap iterasi loop()
-// dan melakukan sampling sesuai interval di config.h.
 #pragma once
-
 #include <stdint.h>
-
 namespace sensors {
-
 struct Climate {
-  bool valid;
+  bool valid; // data terbaru valid untuk telemetri; nilai lama tetap disimpan
   float temperature;
   float humidity;
+  bool failed;
 };
-
 struct Gas {
-  bool ready;  // false selama pemanasan
-  bool valid;  // ready dan tegangan sensor masuk akal
-  int ppm;
+  bool ready;
+  bool valid;
+  float ppm; // tanpa pembulatan/pembatasan untuk status lokal
   float rsKOhm;
+  float adc;
+  float r0KOhm;
 };
-
 void begin();
 void loop();
-
 Climate climate();
 Gas gas();
-
-// Gangguan perangkat keras (lihat fault.h).
 bool dhtFault();
 bool gasFault();
-
-// Pemanasan MQ-135.
 bool warmedUp();
-uint32_t warmupRemainingMs();
-uint8_t warmupPercent();
-
-// Kalibrasi R0: rata-rata R0 di udara bersih (420 ppm) selama
-// config::kCalibrationDurationMs, hasil dicetak ke Serial.
+void skipWarmup();
 void startCalibration();
 bool calibrating();
-
-}  // namespace sensors
+void clearCalibration();
+void printCalibration();
+void togglePlotter();
+bool plotting();
+} // namespace sensors

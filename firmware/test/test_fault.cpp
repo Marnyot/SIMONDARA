@@ -72,38 +72,18 @@ static void testMq135AdcRange() {
   CHECK(mq135OutOfRange(1020));
   CHECK(mq135OutOfRange(config::kMq135AdcRailMin));
 
-  // Tegangan AO >= VCC: Rs tidak bisa dihitung walau ADC belum mentok.
-  const float adcAtSupply = config::kMq135SupplyV / (config::kAdcFullScaleV * config::kMq135DividerFactor) * 1023.0f;
-  CHECK(adcAtSupply < config::kMq135AdcRailMin);
-  CHECK(mq135OutOfRange(adcAtSupply + 1));
-  CHECK(!mq135OutOfRange(adcAtSupply - 1));
+  // Sketch membatasi tegangan sebelum hitung Rs, tetapi ADC <1015 tetap valid.
+  CHECK(!mq135OutOfRange(900));
+  CHECK(!mq135OutOfRange(1014.99f));
+  CHECK(mq135OutOfRange(NAN));
 }
-
-static void feedMq135(Mq135Health& h, float adc, int samples) {
-  for (int i = 0; i < samples; ++i) recordMq135(h, mq135OutOfRange(adc));
-}
-
-static void testMq135Debounce() {
-  const int confirm = config::kMq135FaultConfirmSamples;
+static void testMq135RangeChanges() {
   Mq135Health h;
-
-  feedMq135(h, 1, confirm - 1);
-  CHECK(!h.outOfRange);
-  feedMq135(h, 9, 1);  // satu sampel normal mengulang hitungan
-  feedMq135(h, 1, confirm - 1);
-  CHECK(!h.outOfRange);
-  feedMq135(h, 1, 1);
+  recordMq135(h, mq135OutOfRange(1));
   CHECK(h.outOfRange);
-
-  feedMq135(h, 9, confirm - 1);  // pulih juga butuh konfirmasi
-  CHECK(h.outOfRange);
-  feedMq135(h, 1020, 1);
-  feedMq135(h, 9, confirm - 1);
-  CHECK(h.outOfRange);
-  feedMq135(h, 9, 1);
+  recordMq135(h, mq135OutOfRange(9));
   CHECK(!h.outOfRange);
-
-  feedMq135(h, 1020, confirm);
+  recordMq135(h, mq135OutOfRange(1015));
   CHECK(h.outOfRange);
 }
 
@@ -136,7 +116,7 @@ int main() {
   testDhtFailuresInARow();
   testDhtOutOfRangeIsImmediate();
   testMq135AdcRange();
-  testMq135Debounce();
+  testMq135RangeChanges();
   testMq135NotDuringWarmupOrCalibration();
   testLcdChange();
   testComposeMatchesContract();
