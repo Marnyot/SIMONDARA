@@ -2,14 +2,9 @@
 //
 // Modul ini murni (tanpa Arduino) agar dapat diuji di host: lihat firmware/test.
 //
-// Aturan:
-// - DHT11: gagal baca >= kDhtMaxFailures beruntun, atau nilai di luar rentang valid.
-//   Pulih hanya setelah ada pembacaan valid.
-// - MQ-135: rata-rata ADC < kMq135AdcMinValid (sensor lepas), >= kMq135AdcRailMin
-//   (mentok), atau tegangan AO >= VCC (pembagi bermasalah). Berubah hanya setelah
-//   kondisi bertahan kMq135FaultConfirmSamples sampel beruntun, dan tidak dilaporkan
-//   selama pemanasan/kalibrasi.
-// - LCD: modul I2C tidak menjawab probe, termasuk bila tidak ada sejak boot.
+// DHT: >=3 kegagalan beruntun atau nilai di luar rentang (kontrak cloud).
+// MQ135: ADC di luar [2,1015), dilaporkan setelah pemanasan/di luar kalibrasi.
+// LCD: tidak menjawab probe I2C berkala.
 #pragma once
 
 #include <stdint.h>
@@ -28,8 +23,7 @@ struct DhtHealth {
 };
 
 struct Mq135Health {
-  bool outOfRange = false;  // nilai yang sudah terkonfirmasi (debounce)
-  uint8_t streak = 0;       // sampel beruntun yang berbeda dari outOfRange
+  bool outOfRange = false;  // hasil ADC terakhir
 };
 
 enum class LcdChange : uint8_t { kNone, kLost, kRecovered };

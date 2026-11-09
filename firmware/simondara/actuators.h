@@ -5,7 +5,7 @@
 
 namespace actuators {
 
-// Set level mati sebelum pin dijadikan OUTPUT (syarat boot D3/D4 HIGH).
+// Set level mati sebelum pin dijadikan OUTPUT (menghindari pulsa saat boot).
 void begin();
 
 // Tulis keluaran ke pin; hanya pin yang berubah yang ditulis.
