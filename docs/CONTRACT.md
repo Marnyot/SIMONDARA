@@ -27,7 +27,7 @@ Nilai:
   - `2` MQ-135: tegangan A0 di bawah ambang valid (sensor lepas) atau ADC mentok (pembagi tegangan bermasalah). Tidak termasuk masa pemanasan.
   - `4` LCD: modul I2C tidak menjawab (dicek berkala ±5 dtk; firmware mencoba inisialisasi ulang saat kembali menjawab).
   - Aktuator (kipas/relay, buzzer, LED) tidak punya umpan balik sehingga tidak dapat dideteksi.
-- Buzzer active low dimatikan dengan melepas pin (high-Z/`INPUT`), bukan menulis HIGH, agar modul yang dicatu 5V benar-benar diam; dinyalakan dengan `OUTPUT` + LOW.
+- Perilaku perangkat keras mengikuti sketch tim SIMONDARA v2: buzzer active low (mati = OUTPUT HIGH), saat Bahaya berbunyi bip 300 ms tiap 5 dtk kecuali dibisukan; kipas nyala saat Bahaya dan baru mati saat Aman; status = terburuk dari suhu (aman 18–30, bahaya >33 °C), kelembapan (aman 40–60, bahaya <30 atau >70 %), gas (waspada >1.000, bahaya >2.000 ppm) dengan histeresis 0,5 °C / 2 % / 100 ppm.
   - Backend menerima `state` tanpa `fault` (firmware lama) sebagai `fault: 0`.
 
 ## Multi-kamar
