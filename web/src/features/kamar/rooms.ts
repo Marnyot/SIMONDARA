@@ -31,7 +31,7 @@ export function sortRooms(rooms: Room[]): Room[] {
   );
 }
 
-/** Air counts include last readings; connection and faults are separate signals. */
+/** Offline rooms have no current air status or current hardware fault. */
 export function countRooms(rooms: Room[]) {
   const counts = {
     safe: 0,
@@ -42,6 +42,10 @@ export function countRooms(rooms: Room[]) {
     pending: 0,
   };
   for (const room of rooms) {
+    if (!room.online) {
+      counts.offline++;
+      continue;
+    }
     const status = roomStatus(room);
     counts[
       status === 2
@@ -52,7 +56,6 @@ export function countRooms(rooms: Room[]) {
             ? 'safe'
             : 'pending'
     ]++;
-    if (!room.online) counts.offline++;
     if (room.state?.fault) counts.fault++;
   }
   return counts;
@@ -60,15 +63,7 @@ export function countRooms(rooms: Room[]) {
 
 export function summarizeRooms(rooms: Room[]): string {
   if (rooms.length === 0) return 'Belum ada kamar terdaftar';
-  let danger = 0;
-  let warning = 0;
-  let offline = 0;
-  for (const room of rooms) {
-    const status = roomStatus(room);
-    if (status === 2) danger++;
-    if (status === 1) warning++;
-    if (!room.online) offline++;
-  }
+  const { danger, warning, offline } = countRooms(rooms);
   const alerts = [
     danger ? `${danger} Bahaya` : '',
     warning ? `${warning} Waspada` : '',

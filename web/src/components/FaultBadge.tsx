@@ -1,4 +1,4 @@
-import { TriangleAlert } from 'lucide-react';
+import { Warning as TriangleAlert } from '@phosphor-icons/react/dist/csr/Warning';
 import { faultLabels } from '../live/status';
 import { Badge } from './ui/Badge';
 import styles from './ui/ui.module.css';

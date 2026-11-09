@@ -4,7 +4,6 @@ import { api } from '../../api/client';
 import type { Room } from '../../api/types';
 import { Card } from '../../components/ui/Card';
 import { EmptyState } from '../../components/ui/EmptyState';
-import { StatusDot } from '../../components/ui/StatusDot';
 import { LoadingSwap } from '../../components/ui/LoadingSwap';
 import { Skeleton } from '../../components/ui/Skeleton';
 import { describeEvent, formatDateTime } from '../riwayat/history';
@@ -18,6 +17,13 @@ type Activity = ReturnType<typeof mergeRoomEvents>;
 export function RecentActivity({ rooms }: { rooms: Room[] }) {
   // Membership alone drives requests, not every live telemetry update or rename.
   const roomIds = JSON.stringify(rooms.map((room) => room.deviceId).sort());
+  // Peristiwa baru lahir saat status udara atau koneksi berubah (lewat SSE),
+  // jadi muat ulang tepat saat itu, bukan menunggu interval.
+  const transitions = JSON.stringify(
+    rooms
+      .map((room) => [room.deviceId, room.online, room.state?.status ?? null])
+      .sort(),
+  );
   const [result, setResult] = useState<{
     key: string;
     events: Activity;
@@ -66,12 +72,12 @@ export function RecentActivity({ rooms }: { rooms: Room[] }) {
     void refresh();
     const timer = window.setInterval(() => {
       if (document.visibilityState === 'visible') void refresh();
-    }, 60_000);
+    }, 30_000);
     return () => {
       controller.abort();
       window.clearInterval(timer);
     };
-  }, [roomIds]);
+  }, [roomIds, transitions]);
   const current = result?.key === roomIds ? result : null;
   return (
     <Card className={styles.activity}>
@@ -99,7 +105,7 @@ export function RecentActivity({ rooms }: { rooms: Room[] }) {
             {current.events
               .slice(0, rooms.length > 1 ? 5 : 3)
               .map((event, index) => {
-                const { text, color } = describeEvent(event);
+                const { text } = describeEvent(event);
                 return (
                   <li
                     className={
@@ -112,23 +118,25 @@ export function RecentActivity({ rooms }: { rooms: Room[] }) {
                     style={{ animationDelay: `${index * 40}ms` }}
                     key={`${event.deviceId}-${event.at}-${event.type}`}
                   >
-                    <StatusDot color={color} />
                     <div>
                       <Link
                         viewTransition
                         to={roomUrl(event.deviceId, 'riwayat')}
                       >
                         {rooms.find((room) => room.deviceId === event.deviceId)
-                          ?.name ?? event.deviceId}
+                          ?.name ?? event.deviceId}{' '}
+                        <span>
+                          {event.type === 'status'
+                            ? text.replace('Udara ', '')
+                            : event.value
+                              ? 'tersambung lagi'
+                              : 'terputus'}
+                        </span>
                       </Link>
-                      <p>{text}</p>
-                      <time
-                        dateTime={event.at}
-                        title={formatDateTime(event.at)}
-                      >
-                        {formatRelativeTime(event.at, now)}
-                      </time>
                     </div>
+                    <time dateTime={event.at} title={formatDateTime(event.at)}>
+                      {formatRelativeTime(event.at, now)}
+                    </time>
                   </li>
                 );
               })}

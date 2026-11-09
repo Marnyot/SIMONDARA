@@ -90,7 +90,7 @@ describe('prioritas dan ringkasan kamar', () => {
     ]);
     expect(rooms).toEqual(original);
   });
-  it('menghitung status udara terpisah dari koneksi dan gangguan', () => {
+  it('menghitung udara dan gangguan hanya untuk kamar online', () => {
     expect(
       countRooms([
         room('a', 2500, false, 3),
@@ -99,13 +99,33 @@ describe('prioritas dan ringkasan kamar', () => {
         { ...room('d'), telemetry: null },
       ]),
     ).toEqual({
-      danger: 1,
+      danger: 0,
       warning: 1,
       safe: 1,
       offline: 1,
-      fault: 1,
+      fault: 0,
       pending: 1,
     });
     expect(sortRooms([])).toEqual([]);
   });
+});
+
+it('bacaan dan fault terakhir kamar terputus tidak masuk status saat ini', () => {
+  for (const ppm of [500, 1500, 2500]) {
+    const offline = {
+      online: false,
+      telemetry: { t: 25, h: 50, ppm },
+      state: { fault: 3 },
+    } as Room;
+    expect(countRooms([offline])).toEqual({
+      safe: 0,
+      warning: 0,
+      danger: 0,
+      fault: 0,
+      pending: 0,
+      offline: 1,
+    });
+    expect(summarizeRooms([offline])).toBe('1 kamar: 1 terputus');
+    expect(countRooms([{ ...offline, online: true }]).fault).toBe(1);
+  }
 });

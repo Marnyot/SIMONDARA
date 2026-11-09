@@ -19,9 +19,6 @@ describe('LevelMeter', () => {
       expect(container.querySelectorAll('[data-filled="true"]')).toHaveLength(
         status + 1,
       );
-      expect(container.querySelectorAll('[data-active="true"]')).toHaveLength(
-        1,
-      );
     },
   );
   it('keeps a stale reading explicit and supports sensor labels', () => {

@@ -1,11 +1,11 @@
 import { useState } from 'react';
 import type { FormEvent } from 'react';
-import { Pencil, Trash2 } from 'lucide-react';
+import { Pencil } from '@phosphor-icons/react/dist/csr/Pencil';
+import { Trash as Trash2 } from '@phosphor-icons/react/dist/csr/Trash';
 import { Link } from 'react-router-dom';
 import type { Room } from '../../api/types';
 import { roomNameSchema } from '../../api/types';
 import { Button } from '../../components/ui/Button';
-import { StatusDot } from '../../components/ui/StatusDot';
 import { TextField } from '../../components/ui/TextField';
 import { RoomNotification } from '../notifikasi/RoomNotification';
 import { useLive } from '../../live/context';
@@ -94,11 +94,10 @@ export function RoomRow({
   return (
     <li className={styles.roomRow}>
       <div className={styles.rowInfo}>
-        <Link viewTransition to={roomUrl(room.deviceId)}>{room.name}</Link>
+        <Link viewTransition to={roomUrl(room.deviceId)}>
+          {room.name}
+        </Link>
         <span>
-          <StatusDot
-            color={room.online ? 'var(--color-safe)' : 'var(--color-danger)'}
-          />
           {room.deviceId}, {room.online ? 'terhubung' : 'terputus'}
         </span>
       </div>

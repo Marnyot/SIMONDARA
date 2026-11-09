@@ -1,5 +1,4 @@
 import { Badge } from './ui/Badge';
-import { StatusDot } from './ui/StatusDot';
 import styles from './shell.module.css';
 export function PageHeader({
   title,
@@ -19,7 +18,6 @@ export function PageHeader({
       </div>
       {online === undefined ? null : (
         <Badge tone={online ? 'safe' : 'danger'}>
-          <StatusDot />
           {online ? 'Terhubung' : 'Terputus'}
         </Badge>
       )}

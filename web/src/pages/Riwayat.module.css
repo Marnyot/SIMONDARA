@@ -181,10 +181,25 @@
   align-items: baseline;
   gap: 3px;
   color: var(--color-heading);
-  font-variant-numeric: tabular-nums;
+  font-family: var(--font-number);
+  font-weight: 500;
+  font-variant-numeric: var(--font-numeric);
+  letter-spacing: normal;
   font-size: 1rem;
 }
 .reading small {
   color: var(--color-muted);
   font-size: 0.75rem;
+}
+
+@media (max-width: 767px) {
+  .chartCard,
+  .events {
+    border: 0;
+    border-top: 1px solid var(--color-border);
+    border-radius: 0;
+    padding: var(--space-5) 0;
+    background: transparent;
+    box-shadow: none;
+  }
 }

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { BellOff } from 'lucide-react';
+import { BellSlash as BellOff } from '@phosphor-icons/react/dist/csr/BellSlash';
 import { useRoom } from '../live/context';
 import { Button } from './ui/Button';
 import styles from './MuteAlarmButton.module.css';

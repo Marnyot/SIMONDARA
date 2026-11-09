@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft } from '@phosphor-icons/react/dist/csr/ArrowLeft';
 import { Link, Outlet, useParams } from 'react-router-dom';
 import { sendCommand } from '../api/client';
 import type { Command } from '../api/types';

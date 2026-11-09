@@ -63,8 +63,8 @@ describe('halaman Kontrol', () => {
     expect(screen.getByRole('switch', { name: 'Buzzer' })).toBeDisabled();
     expect(screen.getByRole('radio', { name: 'Merah' })).toBeDisabled();
     expect(
-      screen.getAllByText('Pindah ke mode Manual untuk mengatur sendiri'),
-    ).toHaveLength(3);
+      screen.getAllByText(/Mode Otomatis aktif, kontrol dimatikan/),
+    ).toHaveLength(1);
     expect(screen.getByRole('radio', { name: 'Manual' })).toBeEnabled();
     expect(screen.getByRole('button', { name: 'Bisukan alarm' })).toBeEnabled();
   });

@@ -1,10 +1,10 @@
 import { lazy, memo, Suspense } from 'react';
-import { ChevronRight, Fan } from 'lucide-react';
+import { CaretRight as ChevronRight } from '@phosphor-icons/react/dist/csr/CaretRight';
+import { Fan } from '@phosphor-icons/react/dist/csr/Fan';
 import { Link } from 'react-router-dom';
 import type { Room } from '../../api/types';
 import { LevelMeter } from '../../components/LevelMeter';
 import { SensorNumber } from '../../components/ui/SensorNumber';
-import { StatusDot } from '../../components/ui/StatusDot';
 import { FaultBadge } from '../../components/FaultBadge';
 import { STATUS, unreliableReadings } from '../../live/status';
 import { formatNumber } from '../riwayat/history';
@@ -26,7 +26,6 @@ function LastData({ at, online }: { at: string | null; online: boolean }) {
       className={styles.lastData}
       title={at ? formatAbsoluteTime(at) : undefined}
     >
-      <StatusDot color={online ? 'var(--color-safe)' : 'var(--color-danger)'} />
       {online ? 'Terhubung' : 'Terputus'} ·{' '}
       {at ? `Data terakhir ${formatRelativeTime(at, now)}` : 'Belum ada data'}
     </p>
@@ -48,7 +47,8 @@ function Reading({
     <div data-unreliable={unreliable || undefined}>
       <dt>{label}</dt>
       <dd>
-        <SensorNumber value={value} /> <span>{unit}</span>
+        <SensorNumber value={value} />
+        <span>{unit}</span>
       </dd>
       {unreliable ? <dd className={styles.unreliable}>Tidak andal</dd> : null}
     </div>
@@ -79,17 +79,16 @@ function RoomCardBase({ room }: { room: Room }) {
           </h2>
         </div>
         <LastData at={updatedAt} online={online} />
-        {status === null ? (
+        {!online ? null : status === null ? (
           <span className={styles.waiting}>Belum ada data</span>
         ) : (
           <LevelMeter
             name={`Udara ${name}`}
             status={status}
-            stale={!online}
-            label={`${!online ? 'Terakhir: ' : ''}${STATUS[status].label}`}
+            label={STATUS[status].label}
           />
         )}
-        <FaultBadge fault={state?.fault ?? 0} />
+        {online ? <FaultBadge fault={state?.fault ?? 0} /> : null}
       </div>
       {telemetry ? (
         <dl className={styles.readings}>

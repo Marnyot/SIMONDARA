@@ -102,3 +102,8 @@
     transition: none;
   }
 }
+
+:global([data-theme='dark']) .segment[data-dim] {
+  stroke: var(--color-border-strong);
+  opacity: 1;
+}

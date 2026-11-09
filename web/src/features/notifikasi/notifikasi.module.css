@@ -30,36 +30,16 @@
 }
 .duration {
   display: grid;
-  gap: var(--space-1);
-  font-size: var(--font-size-small);
-  color: var(--color-muted);
-}
-.duration {
-  flex: 1 1 120px;
+  flex: 1 1 240px;
   min-width: 0;
   gap: var(--space-2);
-}
-.duration [role='radiogroup'] {
-  gap: var(--space-1);
-  padding: 0;
-  background: transparent;
-}
-.duration [role='radio'] {
-  padding-inline: var(--space-2);
-  border: 1px solid var(--color-border-strong);
   font-size: var(--font-size-small);
-  white-space: nowrap;
-}
-.duration [role='radio'][aria-checked='true'] {
-  border-color: var(--color-primary);
+  color: var(--color-muted);
 }
 .roomLabel {
   color: var(--color-muted);
 }
 @media (max-width: 600px) {
-  .duration [role='radio'] {
-    flex-basis: calc(50% - var(--space-1));
-  }
   .roomLabel {
     position: absolute;
     width: 1px;
@@ -87,12 +67,18 @@
   gap: var(--space-2);
 }
 
-/* Chip jeda: indikator geser SegmentedControl tidak dipakai di sini karena
-   tiap chip punya border sendiri; chip terpilih diisi penuh. */
-.duration [role='radiogroup'] > span[aria-hidden='true'] {
-  display: none;
+/* Pilihan jeda memakai segmented control biasa: satu lintasan dengan pil yang
+   meluncur ke pilihan aktif. Tombol Jeda setinggi lintasan agar sejajar. */
+.duration [role='radio'] {
+  font-size: var(--font-size-small);
+  white-space: nowrap;
 }
-.duration [role='radio'][aria-checked='true'] {
-  background: var(--color-primary);
-  color: var(--color-on-primary);
+.pause > button {
+  min-height: 52px;
+  padding-inline: var(--space-5);
+}
+@media (max-width: 600px) {
+  .pause > button {
+    flex: 1 1 100%;
+  }
 }

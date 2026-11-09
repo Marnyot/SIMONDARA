@@ -1,14 +1,12 @@
-import {
-  TriangleAlert,
-  CircuitBoard,
-  Clock3,
-  Cloud,
-  Monitor,
-  Thermometer,
-  Wind,
-  Wifi,
-} from 'lucide-react';
-import type { LucideIcon } from 'lucide-react';
+import { Warning as TriangleAlert } from '@phosphor-icons/react/dist/csr/Warning';
+import { Circuitry as CircuitBoard } from '@phosphor-icons/react/dist/csr/Circuitry';
+import { Clock as Clock3 } from '@phosphor-icons/react/dist/csr/Clock';
+import { Cloud } from '@phosphor-icons/react/dist/csr/Cloud';
+import { Monitor } from '@phosphor-icons/react/dist/csr/Monitor';
+import { Thermometer } from '@phosphor-icons/react/dist/csr/Thermometer';
+import { Wind } from '@phosphor-icons/react/dist/csr/Wind';
+import { WifiHigh as Wifi } from '@phosphor-icons/react/dist/csr/WifiHigh';
+import type { Icon as PhosphorIcon } from '@phosphor-icons/react';
 import type { AirStatus } from '../../live/status';
 import type { ConnectionStatus } from '../../live/reducer';
 import type { Telemetry } from '../../api/types';
@@ -22,13 +20,15 @@ export function LcdCard({
   status,
   online,
   lcdFault,
+  fault = 0,
 }: {
   telemetry: Telemetry | null;
   status: AirStatus | null;
   online: boolean;
   lcdFault: boolean;
+  fault?: number;
 }) {
-  const lines = formatLcdLines(telemetry, status);
+  const lines = formatLcdLines(telemetry, status, fault);
   return (
     <Card className={styles.card}>
       <h3 className={styles.title}>Tampilan LCD</h3>
@@ -71,7 +71,7 @@ function Row({
   title,
   icon: Icon,
 }: {
-  icon: LucideIcon;
+  icon: PhosphorIcon;
   label: string;
   value: string;
   tone?: 'safe' | 'warning' | 'danger';

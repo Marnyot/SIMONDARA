@@ -1,4 +1,5 @@
-import { Moon, Sun } from 'lucide-react';
+import { Moon } from '@phosphor-icons/react/dist/csr/Moon';
+import { Sun } from '@phosphor-icons/react/dist/csr/Sun';
 import { useRef } from 'react';
 import { toggleTheme, useTheme } from './theme';
 import styles from './ThemeSwitch.module.css';
@@ -34,8 +35,8 @@ export function ThemeSwitch({ labelled = false }: { labelled?: boolean }) {
       ) : null}
       <span ref={track} className={styles.track} aria-hidden="true">
         <span className={styles.knob}>
-          <Sun size={14} strokeWidth={2.25} className={styles.sun} />
-          <Moon size={14} strokeWidth={2.25} className={styles.moon} />
+          <Sun size={14} weight="regular" className={styles.sun} />
+          <Moon size={14} weight="regular" className={styles.moon} />
         </span>
       </span>
     </button>

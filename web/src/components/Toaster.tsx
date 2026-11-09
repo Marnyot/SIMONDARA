@@ -1,14 +1,12 @@
 import { useEffect, useState } from 'react';
-import {
-  CircleCheck,
-  Cpu,
-  ShieldAlert,
-  ShieldCheck,
-  TriangleAlert,
-  Wifi,
-  WifiOff,
-  X,
-} from 'lucide-react';
+import { CheckCircle as CircleCheck } from '@phosphor-icons/react/dist/csr/CheckCircle';
+import { Cpu } from '@phosphor-icons/react/dist/csr/Cpu';
+import { ShieldWarning as ShieldAlert } from '@phosphor-icons/react/dist/csr/ShieldWarning';
+import { ShieldCheck } from '@phosphor-icons/react/dist/csr/ShieldCheck';
+import { Warning as TriangleAlert } from '@phosphor-icons/react/dist/csr/Warning';
+import { WifiHigh as Wifi } from '@phosphor-icons/react/dist/csr/WifiHigh';
+import { WifiSlash as WifiOff } from '@phosphor-icons/react/dist/csr/WifiSlash';
+import { X } from '@phosphor-icons/react/dist/csr/X';
 import { Link } from 'react-router-dom';
 import { newRoomUrl } from '../features/kamar/rooms';
 import { useLive } from '../live/context';
@@ -57,7 +55,8 @@ function Toast({
       <Icon size={20} aria-hidden="true" className={styles.icon} />
       <p>{message}</p>
       {kind === 'newDevice' ? (
-        <Link viewTransition
+        <Link
+          viewTransition
           to={newRoomUrl(deviceId)}
           className={ui.button}
           data-variant="secondary"

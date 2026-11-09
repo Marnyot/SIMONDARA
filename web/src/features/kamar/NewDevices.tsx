@@ -1,9 +1,8 @@
 import { useId } from 'react';
-import { Plus } from 'lucide-react';
+import { Plus } from '@phosphor-icons/react/dist/csr/Plus';
 import { Link } from 'react-router-dom';
 import type { UnregisteredDevice } from '../../api/types';
 import { Card } from '../../components/ui/Card';
-import { StatusDot } from '../../components/ui/StatusDot';
 import ui from '../../components/ui/ui.module.css';
 import {
   formatAbsoluteTime,
@@ -31,11 +30,6 @@ export function NewDevices({ devices }: { devices: UnregisteredDevice[] }) {
             <div>
               <strong>{deviceId}</strong>
               <span title={formatAbsoluteTime(lastSeen)}>
-                <StatusDot
-                  color={
-                    online ? 'var(--color-safe)' : 'var(--color-border-strong)'
-                  }
-                />
                 {online ? 'Terhubung' : 'Terputus'},{' '}
                 {formatRelativeTime(lastSeen, now)}
               </span>

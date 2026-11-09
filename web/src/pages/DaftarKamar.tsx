@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus } from 'lucide-react';
+import { Plus } from '@phosphor-icons/react/dist/csr/Plus';
 import { Link } from 'react-router-dom';
 import { PageHeader } from '../components/PageHeader';
 import { Card } from '../components/ui/Card';
