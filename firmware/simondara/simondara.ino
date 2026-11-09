@@ -140,6 +140,8 @@ void updateFault() {
   activeFault = now;
 }
 
+void publishTelemetryIfDue(bool force = false);
+
 void publishStateIfChanged() {
   const PublishedState now = snapshot();
   if (!statePending && now == lastPublished) return;
@@ -147,6 +149,9 @@ void publishStateIfChanged() {
     statePending = true;  // kirim ulang begitu tersambung
     return;
   }
+  // Status berubah: kirim telemetri terbaru dulu, supaya notifikasi Bahaya/Aman
+  // di backend memakai angka saat itu, bukan angka 10 detik sebelumnya.
+  if (now.status != lastPublished.status) publishTelemetryIfDue(true);
 
   char json[96];
   snprintf(json, sizeof json, "{\"status\":%u,\"fan\":%u,\"mode\":%u,\"led\":%u,\"buzzer\":%u,\"mute\":%u,\"fault\":%u}",
@@ -160,9 +165,9 @@ void publishStateIfChanged() {
   }
 }
 
-void publishTelemetryIfDue() {
+void publishTelemetryIfDue(bool force) {
   const uint32_t now = millis();
-  if (now - lastTelemetryMs < config::kTelemetryIntervalMs) return;
+  if (!force && now - lastTelemetryMs < config::kTelemetryIntervalMs) return;
   lastTelemetryMs = now;
 
   const sensors::Climate c = sensors::climate();
