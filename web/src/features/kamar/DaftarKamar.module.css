@@ -443,3 +443,79 @@
 .readings dd {
   line-height: 1.4;
 }
+
+.readings dd :global(.sensor-number) {
+  min-width: 0;
+}
+.readings dd > span:last-child {
+  margin-left: 2px;
+}
+.sparklineEmpty {
+  margin: 0;
+  color: var(--color-muted);
+  font-size: 0.75rem;
+}
+.activity li {
+  align-items: center;
+  gap: 8px;
+  padding-block: 12px;
+}
+.activity li > span {
+  flex-shrink: 0;
+  margin: 0;
+}
+.activity li > div {
+  flex: 1;
+}
+.activity a {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--font-size-small);
+}
+.activity a span {
+  font-weight: 400;
+}
+.activity time {
+  flex-shrink: 0;
+  text-align: right;
+}
+@media (max-width: 767px) {
+  .roomCard {
+    border: 0;
+    border-top: 1px solid var(--color-border);
+    border-radius: 0;
+    padding: var(--space-5) 0;
+    background: transparent;
+  }
+  .roomGrid {
+    gap: 0;
+  }
+  .roomBottom {
+    border-top: 0;
+    padding-top: 0;
+  }
+  .activity {
+    border: 0;
+    border-top: 1px solid var(--color-border);
+    border-radius: 0;
+    padding: var(--space-5) 0 0;
+    background: transparent;
+    min-height: 0;
+  }
+  .sparkline {
+    grid-template-rows: 18px 36px;
+    height: 62px;
+  }
+  .sparkline > div {
+    height: 36px;
+  }
+  .sparklinePlaceholder {
+    height: 18px;
+  }
+}
+
+.readings dd :global(.sensor-number) > span[aria-hidden] {
+  display: none;
+}

@@ -3,7 +3,6 @@ import { api, ApiError } from '../../api/client';
 import type { Notifications, NotificationsPatch } from '../../api/types';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
-import { StatusDot } from '../../components/ui/StatusDot';
 import { SegmentedControl } from '../../components/ui/SegmentedControl';
 import { Toggle } from '../../components/ui/Toggle';
 import { useLive } from '../../live/context';
@@ -64,11 +63,6 @@ export function NotificationsPanel() {
         <>
           <div className={styles.row}>
             <span className={styles.status}>
-              <StatusDot
-                color={
-                  data.enabled ? 'var(--color-safe)' : 'var(--color-muted)'
-                }
-              />
               {data.enabled ? 'Aktif' : 'Mati'}
             </span>
             <Toggle

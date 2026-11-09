@@ -1,11 +1,10 @@
-import { X } from 'lucide-react';
+import { X } from '@phosphor-icons/react/dist/csr/X';
 import { MuteAlarmButton } from '../components/MuteAlarmButton';
 import { RoomHeader } from '../components/RoomHeader';
 import { Card } from '../components/ui/Card';
 import { EmptyState } from '../components/ui/EmptyState';
 import {
   LedCard,
-  MANUAL_HINT,
   ModeCard,
   SwitchCard,
 } from '../features/kontrol/ControlCards';
@@ -27,10 +26,9 @@ export default function Kontrol() {
   const offline = !online || !serverReady;
   const manual = state?.mode === 1 && !pending.mode;
   const actuatorDisabled = offline || !manual;
-  const actuatorHint = !offline && !manual ? MANUAL_HINT : null;
 
   const muteCard = values ? (
-    <Card>
+    <Card className={controlStyles.card}>
       <h3 className={controlStyles.title}>Alarm perangkat</h3>
       <p className={styles.sectionHint}>
         Matikan bunyi alarm sampai udara aman lagi.
@@ -82,7 +80,6 @@ export default function Kontrol() {
                 onChange={(on) => send('fan', on ? 1 : 0)}
                 disabled={actuatorDisabled}
                 pending={Boolean(pending.fan)}
-                hint={actuatorHint}
               />
               <SwitchCard
                 title="Buzzer"
@@ -92,7 +89,6 @@ export default function Kontrol() {
                 onChange={(on) => send('buzzer', on ? 1 : 0)}
                 disabled={actuatorDisabled}
                 pending={Boolean(pending.buzzer)}
-                hint={actuatorHint}
               />
               <LedCard
                 value={values.led}
@@ -100,7 +96,6 @@ export default function Kontrol() {
                 onChange={(led) => send('led', led)}
                 disabled={actuatorDisabled}
                 pending={Boolean(pending.led)}
-                hint={actuatorHint}
               />
               {muteCard}
             </>
@@ -119,6 +114,7 @@ export default function Kontrol() {
             telemetry={telemetry}
             status={state?.status ?? null}
             online={online}
+            fault={state?.fault ?? 0}
             lcdFault={((state?.fault ?? 0) & 4) !== 0}
           />
           <ConnectionCard

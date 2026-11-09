@@ -29,12 +29,6 @@ a:not([aria-disabled='true']):active,
 :root:not([data-theme-reveal]) #main {
   view-transition-name: page-content;
 }
-:root:not([data-theme-reveal]) {
-  --route-shift: 16px;
-}
-:root[data-route-direction='back'] {
-  --route-shift: -16px;
-}
 :root:not([data-theme-reveal])::view-transition-old(root) {
   animation: none;
   opacity: 0;
@@ -45,22 +39,29 @@ a:not([aria-disabled='true']):active,
 :root:not([data-theme-reveal])::view-transition-group(page-content) {
   animation: none;
 }
+/* Crossfade dengan durasi & kurva sama: lewat mix-blend plus-lighter bawaan,
+   opacity lama + baru selalu 1, jadi tidak ada kedip ke latar ("seperti refresh"). */
 ::view-transition-old(page-content) {
-  animation: page-out 160ms var(--motion-ease) both;
+  animation: page-out 200ms linear both;
 }
 ::view-transition-new(page-content) {
-  animation: page-in 200ms var(--motion-ease) both;
+  animation:
+    page-fade-in 200ms linear both,
+    page-rise 240ms var(--motion-ease) both;
 }
-@keyframes page-in {
+@keyframes page-fade-in {
   from {
     opacity: 0;
-    transform: translateX(var(--route-shift));
+  }
+}
+@keyframes page-rise {
+  from {
+    transform: translateY(6px);
   }
 }
 @keyframes page-out {
   to {
     opacity: 0;
-    transform: translateX(calc(var(--route-shift) * -1));
   }
 }
 @keyframes content-in {
@@ -92,7 +93,6 @@ a:not([aria-disabled='true']):active,
 }
 .sensor-number {
   display: inline-grid;
-  min-width: 5ch;
   font: inherit;
   color: inherit;
   font-variant-numeric: tabular-nums;
@@ -126,24 +126,36 @@ a:not([aria-disabled='true']):active,
     animation: none !important;
   }
 }
-:root:not([data-theme-reveal]) [data-nav-indicator] {
-  view-transition-name: bottom-indicator;
+/* Bingkai aplikasi (sidebar, header, navbar) diam saat pindah halaman: masing-masing
+   punya grup sendiri tanpa animasi dan hanya snapshot baru (live) yang tampil,
+   jadi tidak berkedip dan pil tab tetap meluncur lewat transisi CSS-nya. */
+:root:not([data-theme-reveal]) [data-shell='sidebar'] {
+  view-transition-name: shell-sidebar;
 }
-::view-transition-group(bottom-indicator) {
-  animation-duration: 200ms;
-  animation-timing-function: var(--motion-ease);
+:root:not([data-theme-reveal]) [data-shell='header'] {
+  view-transition-name: shell-header;
 }
-::view-transition-old(bottom-indicator) {
+:root:not([data-theme-reveal]) [data-shell='nav'] {
+  view-transition-name: shell-nav;
+}
+::view-transition-group(shell-sidebar),
+::view-transition-group(shell-header),
+::view-transition-group(shell-nav),
+::view-transition-new(shell-sidebar),
+::view-transition-new(shell-header),
+::view-transition-new(shell-nav) {
   animation: none;
-  opacity: 0;
 }
-::view-transition-new(bottom-indicator) {
-  animation: none;
+::view-transition-old(shell-sidebar),
+::view-transition-old(shell-header),
+::view-transition-old(shell-nav) {
+  display: none;
 }
-/* Snapshot the target pill position; the named transition itself supplies the glide. */
-:root[data-route-transition] [data-nav-indicator] {
-  transition: none;
-}
-:root:not([data-theme-reveal])::view-transition-group(root) {
-  animation: none;
+
+/* Preserve each snapshot's aspect ratio when routes have different heights. */
+::view-transition-old(page-content),
+::view-transition-new(page-content) {
+  height: 100%;
+  object-fit: none;
+  object-position: top;
 }

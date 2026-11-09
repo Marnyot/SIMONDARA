@@ -2,10 +2,11 @@ import { SensorNumber } from '../components/ui/SensorNumber';
 import { lazy, Suspense } from 'react';
 import { RoomHeader } from '../components/RoomHeader';
 import { Link } from 'react-router-dom';
-import { Droplet, Thermometer, Wind } from 'lucide-react';
+import { Drop as Droplet } from '@phosphor-icons/react/dist/csr/Drop';
+import { Thermometer } from '@phosphor-icons/react/dist/csr/Thermometer';
+import { Wind } from '@phosphor-icons/react/dist/csr/Wind';
 import { GasGauge } from '../components/GasGauge';
 import { Badge } from '../components/ui/Badge';
-import { StatusDot } from '../components/ui/StatusDot';
 import { LevelMeter } from '../components/LevelMeter';
 import {
   assessTemperature,
@@ -20,7 +21,8 @@ import { ErrorState } from '../components/ui/ErrorState';
 import { LoadingSwap } from '../components/ui/LoadingSwap';
 import { Skeleton } from '../components/ui/Skeleton';
 import { useRoom } from '../live/context';
-import { airStatus, STATUS, unreliableReadings } from '../live/status';
+import { airStatus, unreliableReadings } from '../live/status';
+import { withLatestReading } from '../features/beranda/gasTrend';
 import { statusAdvice } from '../features/beranda/statusAdvice';
 import { bucketInterval, formatNumber } from '../features/riwayat/history';
 import { roomUrl } from '../features/kamar/rooms';
@@ -32,10 +34,15 @@ const SensorChart = lazy(() => import('../features/riwayat/SensorChart'));
 const UNRELIABLE_NOTE = 'Sensor bermasalah, angka belum tentu benar';
 
 function GasTrend() {
-  const { deviceId } = useRoom();
+  const { deviceId, telemetry, updatedAt } = useRoom();
   const { points, from, to, error, loading, retry } = useHistory(
     deviceId,
     '24h',
+  );
+  const chartPoints = withLatestReading(points, telemetry, updatedAt);
+  const chartTo = Math.max(
+    to ?? 0,
+    Date.parse(chartPoints.at(-1)?.at ?? '') || 0,
   );
   return (
     <Card className={styles.trend}>
@@ -46,7 +53,7 @@ function GasTrend() {
       >
         {error ? (
           <ErrorState message={error} onRetry={retry} />
-        ) : points.length === 0 || from === null || to === null ? (
+        ) : chartPoints.length === 0 || from === null || to === null ? (
           <EmptyState title="Belum ada riwayat gas">
             Angka muncul setelah sensor mengirim data.
           </EmptyState>
@@ -55,10 +62,10 @@ function GasTrend() {
             fallback={<Skeleton height={150} label="Memuat grafik gas" />}
           >
             <SensorChart
-              points={points}
+              points={chartPoints}
               metric="ppm"
               from={from}
-              to={to}
+              to={chartTo}
               intervalMs={bucketInterval('24h')}
               zoomAction={
                 <Link
@@ -223,7 +230,6 @@ export default function Beranda() {
             <div className={styles.connection}>
               <span>Koneksi</span>
               <Badge tone={online ? 'safe' : 'danger'}>
-                <StatusDot />
                 {online ? 'Terhubung' : 'Terputus'}
               </Badge>
             </div>
@@ -232,20 +238,7 @@ export default function Beranda() {
               <dl>
                 <div className={styles.ledRow}>
                   <dt>LED</dt>
-                  <dd>
-                    <span className={styles.leds} aria-hidden="true">
-                      {[1, 2, 3].map((led) => (
-                        <i
-                          key={led}
-                          data-active={state.led === led}
-                          style={{
-                            background: STATUS[(led - 1) as 0 | 1 | 2].color,
-                          }}
-                        />
-                      ))}
-                    </span>
-                    {['Mati', 'Hijau', 'Kuning', 'Merah'][state.led]}
-                  </dd>
+                  <dd>{['Mati', 'Hijau', 'Kuning', 'Merah'][state.led]}</dd>
                 </div>
                 <div>
                   <dt>Kipas</dt>

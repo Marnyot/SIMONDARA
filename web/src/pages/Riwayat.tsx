@@ -7,7 +7,6 @@ import { EmptyState } from '../components/ui/EmptyState';
 import { ErrorState } from '../components/ui/ErrorState';
 import { Skeleton } from '../components/ui/Skeleton';
 import { SegmentedControl } from '../components/ui/SegmentedControl';
-import { StatusDot } from '../components/ui/StatusDot';
 import { useRoom } from '../live/context';
 import { unreliableReadings } from '../live/status';
 import {
@@ -145,10 +144,9 @@ export default function Riwayat() {
           ) : (
             <ul>
               {events.events.map((event, index) => {
-                const { text, color } = describeEvent(event);
+                const { text } = describeEvent(event);
                 return (
                   <li key={`${event.at}-${event.type}-${index}`}>
-                    <StatusDot color={color} />
                     <span>{text}</span>
                     <time dateTime={event.at} title={formatDateTime(event.at)}>
                       {formatTime(event.at)}

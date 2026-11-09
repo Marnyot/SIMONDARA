@@ -1,13 +1,12 @@
-import { useId } from 'react';
 import type { ReactNode } from 'react';
 import type { DeviceState } from '../../api/types';
 import { Card } from '../../components/ui/Card';
 import { SegmentedControl } from '../../components/ui/SegmentedControl';
-import { StatusDot } from '../../components/ui/StatusDot';
 import { Toggle } from '../../components/ui/Toggle';
 import styles from './kontrol.module.css';
 
-export const MANUAL_HINT = 'Pindah ke mode Manual untuk mengatur sendiri';
+export const MANUAL_HINT =
+  'Mode Otomatis aktif, kontrol dimatikan. Pindah ke Manual untuk mengatur sendiri';
 
 function PendingNote() {
   return (
@@ -55,7 +54,6 @@ function CardHeading({
 interface CommonProps {
   disabled: boolean;
   pending: boolean;
-  hint?: string | null;
 }
 
 export function SwitchCard({
@@ -66,7 +64,6 @@ export function SwitchCard({
   onChange,
   disabled,
   pending,
-  hint,
 }: CommonProps & {
   title: string;
   onLabel: string;
@@ -74,9 +71,11 @@ export function SwitchCard({
   actual?: boolean;
   onChange: (checked: boolean) => void;
 }) {
-  const hintId = useId();
   return (
-    <Card className={styles.card} data-disabled={disabled || undefined}>
+    <Card
+      className={`${styles.card} ${styles.actuator}`}
+      data-disabled={disabled || undefined}
+    >
       <CardHeading
         title={title}
         status={`Di alat: ${(actual ?? checked) ? onLabel : 'Mati'}`}
@@ -88,21 +87,9 @@ export function SwitchCard({
             onChange={onChange}
             disabled={disabled}
             aria-busy={pending || undefined}
-            aria-describedby={hint ? hintId : undefined}
           />
         }
       />
-      {disabled ? (
-        <span className={styles.locked}>
-          <StatusDot />
-          Kontrol nonaktif
-        </span>
-      ) : null}
-      {hint ? (
-        <p id={hintId} className={styles.hint}>
-          {hint}
-        </p>
-      ) : null}
     </Card>
   );
 }
@@ -138,6 +125,7 @@ export function ModeCard({
         onChange={onChange}
         disabled={disabled || pending}
       />
+      {value === 0 ? <p className={styles.hint}>{MANUAL_HINT}</p> : null}
       <p className={styles.description}>
         {value === 0 ? (
           <>
@@ -167,17 +155,14 @@ export function LedCard({
   onChange,
   disabled,
   pending,
-  hint,
 }: CommonProps & {
   value: DeviceState['led'];
   actual?: DeviceState['led'];
   onChange: (value: DeviceState['led']) => void;
 }) {
-  const reported = actual ?? value;
-  const label = LED_OPTIONS[reported].label;
   return (
     <Card
-      className={styles.card}
+      className={`${styles.card} ${styles.actuator}`}
       data-disabled={disabled || undefined}
       aria-busy={pending || undefined}
     >
@@ -185,21 +170,7 @@ export function LedCard({
         title="LED Indikator"
         status={`Di alat: ${LED_OPTIONS[actual ?? value].label}`}
         pending={pending}
-        aside={
-          <span
-            className={styles.lamp}
-            data-led={reported}
-            role="img"
-            aria-label={`LED ${label.toLowerCase()}`}
-          />
-        }
       />
-      {disabled ? (
-        <span className={styles.locked}>
-          <StatusDot />
-          Kontrol nonaktif
-        </span>
-      ) : null}
       <SegmentedControl
         label="Warna LED Indikator"
         options={LED_OPTIONS}
@@ -207,7 +178,6 @@ export function LedCard({
         onChange={onChange}
         disabled={disabled}
       />
-      {hint ? <p className={styles.hint}>{hint}</p> : null}
     </Card>
   );
 }

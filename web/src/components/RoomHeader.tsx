@@ -1,4 +1,3 @@
-import { StatusDot } from './ui/StatusDot';
 import { useRoom } from '../live/context';
 import { useNow } from '../features/kontrol/time';
 import { relativeUpdate } from '../features/beranda/statusAdvice';
@@ -13,9 +12,6 @@ export function RoomHeader() {
       <h1>{name}</h1>
       <div className={styles.meta}>
         <span className={styles.connection} data-online={online}>
-          <StatusDot
-            color={online ? 'var(--color-safe)' : 'var(--color-danger)'}
-          />
           {online ? 'Terhubung' : 'Terputus'}
         </span>
         <span aria-hidden="true">·</span>

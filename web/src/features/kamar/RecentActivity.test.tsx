@@ -27,7 +27,9 @@ it('mempertahankan aktivitas kamar lain saat satu request gagal dan tidak memuat
       <RecentActivity rooms={rooms} />
     </MemoryRouter>,
   );
-  expect(await screen.findByText('Udara jadi Bahaya')).toBeVisible();
+  expect(
+    await screen.findByRole('link', { name: 'Kamar 1 jadi Bahaya' }),
+  ).toBeVisible();
   expect(request).toHaveBeenCalledTimes(2);
   rerender(
     <MemoryRouter>
@@ -40,7 +42,9 @@ it('mempertahankan aktivitas kamar lain saat satu request gagal dan tidak memuat
       />
     </MemoryRouter>,
   );
-  expect(screen.getByRole('link', { name: 'Kamar 1 baru' })).toBeVisible();
+  expect(
+    screen.getByRole('link', { name: 'Kamar 1 baru jadi Bahaya' }),
+  ).toBeVisible();
   expect(request).toHaveBeenCalledTimes(2);
   const signal = request.mock.calls[0]![2]!;
   unmount();

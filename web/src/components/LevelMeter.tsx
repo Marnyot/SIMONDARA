@@ -27,10 +27,7 @@ export function LevelMeter({
             key={level}
             className={styles.step}
             data-filled={level <= status}
-            data-active={level === status}
-          >
-            <i />
-          </span>
+          />
         ))}
       </span>
       <span aria-hidden="true">{label}</span>

@@ -83,72 +83,34 @@
   }
 }
 
-/* LED lamp mirrors the physical indicator colour. */
-.lamp {
-  flex-shrink: 0;
-  width: 22px;
-  height: 22px;
-  border-radius: 50%;
-  border: 2px solid var(--color-border-strong);
-  background: var(--color-background);
-  transition:
-    background-color 200ms ease-out,
-    box-shadow 200ms ease-out;
-}
-
-.lamp[data-led='1'],
-.lamp[data-led='2'],
-.lamp[data-led='3'] {
-  border-color: transparent;
-  box-shadow: 0 2px 10px var(--lamp-glow);
-}
-
-.lamp[data-led='1'] {
-  --lamp-glow: color-mix(in srgb, var(--color-safe) 40%, transparent);
-  background: var(--color-safe);
-}
-
-.lamp[data-led='2'] {
-  --lamp-glow: color-mix(in srgb, var(--color-warning) 45%, transparent);
-  background: var(--color-warning);
-}
-
-.lamp[data-led='3'] {
-  --lamp-glow: color-mix(in srgb, var(--color-danger) 40%, transparent);
-  background: var(--color-danger);
-}
-
-/* LCD 16x2: dark glass with faint character cells, like the HD44780 panel. */
+/* A compact backlit 16×2 module, with contiguous character columns. */
 .lcd {
   container-type: inline-size;
   display: grid;
-  gap: var(--space-1);
-  padding: var(--space-4) var(--space-4);
-  border-radius: var(--radius-control);
-  background: #12352b;
-  box-shadow:
-    inset 0 2px 6px #0000004d,
-    inset 0 0 0 1px #ffffff0f;
+  gap: 0.3em;
+  width: min(100%, 360px);
+  justify-self: start;
+  padding: 12px 10px;
+  border: 8px solid #314d37;
+  border-radius: 4px;
+  background: #b6cf72;
+  box-shadow: inset 0 2px 5px #26371966;
 }
-
 .lcdRow {
   display: grid;
-  grid-template-columns: repeat(16, minmax(0, 1fr));
-  gap: 2px;
+  grid-template-columns: repeat(16, 1ch);
+  justify-content: center;
+  font-family: 'Courier New', ui-monospace, monospace;
+  font-size: clamp(12px, 8.8cqi, 29px);
+  font-weight: 700;
+  line-height: 1.2;
 }
-
 .lcdCell {
-  display: grid;
-  place-items: center;
-  aspect-ratio: 5 / 8;
-  border-radius: 2px;
-  background: #ffffff0a;
-  color: #d9f2e8;
-  font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
-  font-size: clamp(0.75rem, 5.6cqi, 1.375rem);
-  line-height: 1;
+  color: #263719;
+  font: inherit;
+  text-align: center;
   white-space: pre;
-  text-shadow: 0 0 6px #d9f2e84d;
+  text-shadow: 0.4px 0 #26371966;
 }
 
 .connectionGroups {
@@ -214,10 +176,6 @@
 .row[data-tone='warning'] dd {
   color: var(--color-warning-text);
 }
-.row[data-tone='danger'] {
-  background: var(--color-danger-soft);
-  border-radius: var(--radius-control);
-}
 .row[data-tone='danger'] dt,
 .row[data-tone='danger'] dt svg,
 .row[data-tone='danger'] dd {
@@ -234,14 +192,6 @@
     transition: none;
   }
 }
-.locked {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-  justify-self: start;
-  color: var(--color-muted);
-  font-size: var(--font-size-small);
-}
 .card[data-disabled] [role='switch'][aria-checked='true'] {
   background: var(--color-border-strong);
 }
@@ -251,4 +201,22 @@
 }
 .heading > :last-child:not(div) {
   flex-shrink: 0;
+}
+
+@media (max-width: 767px) {
+  .card {
+    border: 0;
+    border-top: 1px solid var(--color-border);
+    border-radius: 0;
+    box-shadow: none;
+    padding: var(--space-5) 0;
+    background: transparent;
+    gap: var(--space-3);
+  }
+}
+
+@media (max-width: 767px) {
+  .actuator {
+    padding-block: var(--space-3);
+  }
 }

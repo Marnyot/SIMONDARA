@@ -1,22 +1,19 @@
+import { ChartLine as ChartNoAxesCombined } from '@phosphor-icons/react/dist/csr/ChartLine';
+import { House } from '@phosphor-icons/react/dist/csr/House';
+import { SquaresFour as LayoutGrid } from '@phosphor-icons/react/dist/csr/SquaresFour';
+import { SignOut as LogOut } from '@phosphor-icons/react/dist/csr/SignOut';
+import { GearSix as Settings2 } from '@phosphor-icons/react/dist/csr/GearSix';
+import { SlidersHorizontal } from '@phosphor-icons/react/dist/csr/SlidersHorizontal';
+import { UserCircle as CircleUserRound } from '@phosphor-icons/react/dist/csr/UserCircle';
+import type { Icon } from '@phosphor-icons/react';
 import {
-  ChartNoAxesCombined,
-  House,
-  LayoutGrid,
-  LogOut,
-  Settings2,
-  SlidersHorizontal,
-} from 'lucide-react';
-import type { LucideIcon } from 'lucide-react';
-import {
-  UNSAFE_ViewTransitionContext,
   NavLink,
   Outlet,
   useLocation,
   useMatch,
   useNavigationType,
 } from 'react-router-dom';
-import { useContext, useEffect, useLayoutEffect, useState } from 'react';
-import { transitionDirection } from './motion';
+import { useEffect, useState } from 'react';
 import { useAuth } from '../auth/context';
 import { roomUrl } from '../features/kamar/rooms';
 import { useLive } from '../live/context';
@@ -24,12 +21,11 @@ import { Brand } from './Brand';
 import { ThemeSwitch } from './ThemeSwitch';
 import { Button } from './ui/Button';
 import { Toaster } from './Toaster';
-import { StatusDot } from './ui/StatusDot';
 import styles from './shell.module.css';
 interface NavigationItem {
   to: string;
   label: string;
-  Icon: LucideIcon;
+  Icon: Icon;
 }
 const mainNavigation: NavigationItem[] = [
   { to: '/', label: 'Daftar Kamar', Icon: LayoutGrid },
@@ -67,18 +63,6 @@ function SidebarLinks({ items }: { items: NavigationItem[] }) {
 }
 
 export function AppShell() {
-  const transition = useContext(UNSAFE_ViewTransitionContext);
-  useLayoutEffect(() => {
-    if (!transition.isTransitioning) return;
-    document.documentElement.dataset.routeTransition = '';
-    document.documentElement.dataset.routeDirection = transitionDirection(
-      transition.currentLocation.pathname,
-      transition.nextLocation.pathname,
-    );
-    return () => {
-      delete document.documentElement.dataset.routeTransition;
-    };
-  }, [transition]);
   const { logout } = useAuth();
   const { rooms, connection } = useLive();
   const roomMatch = useMatch('/kamar/:deviceId/*');
@@ -87,13 +71,6 @@ export function AppShell() {
   );
   const roomItems = room ? roomNavigation(room.deviceId) : null;
   const connected = rooms.filter(({ online }) => online).length;
-  const fleetColor = !rooms.length
-    ? 'var(--color-muted)'
-    : connected === rooms.length
-      ? 'var(--color-safe)'
-      : connected
-        ? 'var(--color-warning)'
-        : 'var(--color-danger)';
   const { pathname } = useLocation();
   const navigationType = useNavigationType();
   // A drill-down must not open scrolled to where the list was; Back keeps the browser's position.
@@ -127,7 +104,7 @@ export function AppShell() {
         ) : null}
       </div>
       <Toaster />
-      <aside className={styles.sidebar}>
+      <aside className={styles.sidebar} data-shell="sidebar">
         <Brand />
         <nav aria-label="Navigasi utama desktop" className={styles.desktopNav}>
           <SidebarLinks items={mainNavigation} />
@@ -145,7 +122,6 @@ export function AppShell() {
         ) : null}
         <div className={styles.sidebarBottom}>
           <p className={styles.fleet}>
-            <StatusDot color={fleetColor} />
             {rooms.length ? (
               <span>
                 <span className="tabular-nums">
@@ -168,17 +144,27 @@ export function AppShell() {
           </Button>
         </div>
       </aside>
-      <div className={styles.mobileTop}>
+      <div className={styles.mobileTop} data-shell="header">
         <Brand />
-        <ThemeSwitch />
         <Button
           variant="ghost"
-          aria-label="Keluar dari akun"
-          loading={loggingOut}
-          onClick={() => void leave()}
+          aria-label="Menu akun"
+          popoverTarget="account-menu"
         >
-          <LogOut size={20} aria-hidden="true" />
+          <CircleUserRound size={22} aria-hidden="true" />
         </Button>
+        <div id="account-menu" popover="auto" className={styles.accountMenu}>
+          <h2>Akun</h2>
+          <ThemeSwitch labelled />
+          <Button
+            variant="ghost"
+            loading={loggingOut}
+            onClick={() => void leave()}
+          >
+            <LogOut size={18} aria-hidden="true" />
+            Keluar
+          </Button>
+        </div>
       </div>
       <main id="main" className={styles.main} tabIndex={-1}>
         {error ? (
@@ -189,6 +175,7 @@ export function AppShell() {
         <Outlet />
       </main>
       <nav
+        data-shell="nav"
         aria-label={room ? `Navigasi ${room.name}` : 'Navigasi utama mobile'}
         className={styles.bottomNav}
         style={

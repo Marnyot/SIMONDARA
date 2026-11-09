@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import type { FormEvent } from 'react';
 import { Navigate } from 'react-router-dom';
-import { LockKeyhole } from 'lucide-react';
+import { LockKey as LockKeyhole } from '@phosphor-icons/react/dist/csr/LockKey';
 import { useAuth } from '../auth/context';
 import { Brand } from '../components/Brand';
 import { Splash } from '../components/Splash';

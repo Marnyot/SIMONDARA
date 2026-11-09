@@ -38,6 +38,8 @@ function GasGradient({ id, domain }: { id: string; domain: [number, number] }) {
   );
 }
 
+const MIN_SPAN_MS = 2 * 60 * 60 * 1000;
+
 export default function RoomSparkline({
   deviceId,
   name,
@@ -47,8 +49,19 @@ export default function RoomSparkline({
 }) {
   const id = useId();
   const { points, from, to, error } = useHistory(deviceId, '24h', 300_000);
-  if (error || !points.length || from === null || to === null)
-    return <div className={styles.sparklinePlaceholder} aria-hidden="true" />;
+  // Butuh rentang data minimal 2 jam, kalau tidak garisnya hanya sepotong di pojok.
+  const span =
+    points.length > 1
+      ? Date.parse(points.at(-1)!.at) - Date.parse(points[0]!.at)
+      : 0;
+  if (error || span < MIN_SPAN_MS || from === null || to === null)
+    return (
+      <p className={styles.sparklineEmpty}>
+        {error
+          ? 'Tren belum tersedia'
+          : 'Tren 24 jam muncul setelah ada data 2 jam'}
+      </p>
+    );
   const { rows } = chartSeries(points, 'ppm', bucketInterval('24h'));
   const { domain } = historyAxis(points, 'ppm');
   return (
@@ -58,7 +71,7 @@ export default function RoomSparkline({
         role="img"
         aria-label={`Tren kadar gas ${name}, 24 jam, terakhir ${formatNumber(points.at(-1)!.ppm, 0)} ppm.`}
       >
-        <ResponsiveContainer width="100%" height={56} minWidth={0}>
+        <ResponsiveContainer width="100%" height="100%" minWidth={0}>
           <LineChart
             data={rows}
             margin={{ top: 3, right: 2, bottom: 3, left: 2 }}
@@ -72,7 +85,7 @@ export default function RoomSparkline({
               dataKey="value"
               stroke={`url(#${id})`}
               strokeWidth={2}
-              dot={points.length === 1 ? { r: 2, fill: `url(#${id})` } : false}
+              dot={false}
               activeDot={false}
               connectNulls={false}
               isAnimationActive={false}
